@@ -8,6 +8,7 @@ type BlogPostModule = {
     description: string;
     pubDate: string | Date;
     lang?: "en" | "ru";
+    messageCount?: number;
   };
   url: string;
 };
@@ -22,22 +23,22 @@ const posts = postModules
     title: getFeedTitle(post.frontmatter.title, post.frontmatter.description),
     pubDate: new Date(post.frontmatter.pubDate),
     url: post.url,
-    lang: post.frontmatter.lang ?? (post.url.startsWith("/ru/") ? "ru" : "en")
+    lang: post.frontmatter.lang ?? (post.url.startsWith("/ru/") ? "ru" : "en"),
+    messageCount: post.frontmatter.messageCount ?? 0
   }))
   .sort((a, b) => b.pubDate.getTime() - a.pubDate.getTime())
   .slice(0, 6);
 ---
 
 <BaseLayout
-  title="Tsatsin Blog"
-  description="A bilingual blog about software, product, and practical ideas in English and Russian."
+  title="Tsatsin"
+  description="Tech explorations in threads. From Telegram to web."
 >
   <section class="hero">
     <p class="eyebrow">blog.tsatsin.com</p>
-    <h1>A bilingual blog: English + Russian</h1>
+    <h1>Tech explorations in threads</h1>
     <p>
-      Pick your language and read practical notes on engineering, product decisions, and lessons
-      from shipping real projects.
+      Forwarded from Telegram. AI experiments, hardware hacks, and whatever I'm currently breaking.
     </p>
   </section>
 
@@ -70,6 +71,9 @@ const posts = postModules
                 })}
               </span>
               <span class="lang-badge" data-lang={post.lang}>{post.lang === "ru" ? "RU" : "EN"}</span>
+              {post.messageCount > 0 && (
+                <span class="msg-count">{post.messageCount} msgs</span>
+              )}
             </p>
             <h3 class="thread-main">{post.title}</h3>
             <p class="thread-open">Open thread →</p>

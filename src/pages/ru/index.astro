@@ -7,6 +7,7 @@ type BlogPostModule = {
     title: string;
     description: string;
     pubDate: string | Date;
+    messageCount?: number;
   };
   url: string;
 };
@@ -17,20 +18,21 @@ const posts = postModules
   .map((post) => ({
     title: getFeedTitle(post.frontmatter.title, post.frontmatter.description),
     pubDate: new Date(post.frontmatter.pubDate),
-    url: post.url
+    url: post.url,
+    messageCount: post.frontmatter.messageCount ?? 0
   }))
   .sort((a, b) => b.pubDate.getTime() - a.pubDate.getTime());
 ---
 
 <BaseLayout
   lang="ru"
-  title="Посты на русском | Tsatsin Blog"
-  description="Русскоязычные заметки о разработке, продукте и практических решениях."
+  title="Треды на русском | Tsatsin"
+  description="Тех-эксперименты, AI и железо. Из Telegram в веб."
 >
   <section class="hero">
     <p class="eyebrow">Русский</p>
-    <h1>Коротко и по делу.</h1>
-    <p>Практические заметки о разработке, архитектуре и запуске реальных проектов.</p>
+    <h1>Тех-эксперименты в тредах</h1>
+    <p>Из Telegram. AI, железо и всё что я сейчас ломаю.</p>
   </section>
 
   <section>
@@ -49,6 +51,9 @@ const posts = postModules
               </span>
               <span class="thread-dot" aria-hidden="true">•</span>
               <span>тред</span>
+              {post.messageCount > 0 && (
+                <span class="msg-count">{post.messageCount} msgs</span>
+              )}
             </p>
             <h3 class="thread-main">{post.title}</h3>
             <p class="thread-open">Открыть тред →</p>

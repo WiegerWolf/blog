@@ -81,6 +81,7 @@ interface PublishResult {
   lang: Lang;
   title: string;
   description: string;
+  messageCount: number;
 }
 
 interface GitHubRepoInfo {
@@ -457,10 +458,11 @@ async function buildPostFromDraft(draft: DraftState, overrideLang?: Lang): Promi
   const frontmatter = [
     "---",
     "layout: ../../../layouts/PostLayout.astro",
-    `title: \"${escapeYamlString(title)}\"`,
-    `description: \"${escapeYamlString(description)}\"`,
+    `title: "${escapeYamlString(title)}"`,
+    `description: "${escapeYamlString(description)}"`,
     `pubDate: ${publicationDate.toISOString().slice(0, 10)}`,
     `lang: ${lang}`,
+    `messageCount: ${sortedItems.length}`,
     "---",
     ""
   ];
@@ -476,7 +478,8 @@ async function buildPostFromDraft(draft: DraftState, overrideLang?: Lang): Promi
     slug,
     lang,
     title,
-    description
+    description,
+    messageCount: sortedItems.length
   };
 }
 

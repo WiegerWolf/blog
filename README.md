@@ -1,6 +1,6 @@
-# Tsatsin Blog
+# Tsatsin
 
-A simple and modern blog built with Astro and deployed to GitHub Pages.
+Tech explorations exported from Telegram to the web.
 
 ## Run locally
 
@@ -16,11 +16,11 @@ English posts live in `src/pages/en/blog/`.
 ```md
 ---
 layout: ../../../layouts/PostLayout.astro
-title: "My Post Title"
-description: "Short summary shown on the homepage and in metadata."
+title: "Thread Title"
+description: "Auto-generated from first sentence."
 pubDate: 2026-02-24
 lang: en
-translationKey: my-post-title
+messageCount: 37
 ---
 
 Your content here.
@@ -31,17 +31,17 @@ Russian posts live in `src/pages/ru/blog/`:
 ```md
 ---
 layout: ../../../layouts/PostLayout.astro
-title: "Заголовок поста"
-description: "Короткое описание для карточек и метаданных."
+title: "Заголовок треда"
+description: "Автогенерация из первого предложения."
 pubDate: 2026-02-24
 lang: ru
-translationKey: my-post-title
+messageCount: 37
 ---
 
 Ваш текст.
 ```
 
-`translationKey` links equivalent EN/RU posts.
+`messageCount` shows how many messages in the thread.
 
 ## Add images to posts
 
@@ -69,9 +69,9 @@ Optional caption:
 - English RSS: `/en/rss.xml`
 - Russian RSS: `/ru/rss.xml`
 
-## Telegram publisher bot (Saved Messages -> PR)
+## Telegram publisher bot (Telegram → PR)
 
-This repo includes a private Telegram bot that turns forwarded thread messages into a blog post PR.
+Private bot that forwards thread messages into PRs.
 
 Flow:
 

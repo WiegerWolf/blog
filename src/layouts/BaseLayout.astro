@@ -30,32 +30,32 @@ const rssHref = section === "root" ? "/rss.xml" : `/${section}/rss.xml`;
 const navLinks =
   section === "ru"
     ? [
-        { href: "/ru/", label: "Главная" },
-        { href: "/ru/about/", label: "О блоге" },
-        { href: "/en/", label: "English" },
+        { href: "/ru/", label: "Треды" },
+        { href: "/ru/about/", label: "О тредах" },
+        { href: "/en/", label: "EN" },
         { href: rssHref, label: "RSS" }
       ]
     : section === "en"
       ? [
-          { href: "/en/", label: "Home" },
+          { href: "/en/", label: "Threads" },
           { href: "/en/about/", label: "About" },
-          { href: "/ru/", label: "Русский" },
+          { href: "/ru/", label: "RU" },
           { href: rssHref, label: "RSS" }
         ]
       : [
-          { href: "/", label: "Home" },
-          { href: "/en/", label: "English" },
-          { href: "/ru/", label: "Русский" },
+          { href: "/", label: "Threads" },
+          { href: "/en/", label: "EN" },
+          { href: "/ru/", label: "RU" },
           { href: rssHref, label: "RSS" }
         ];
 
 const rssTitle =
-  section === "ru" ? "Tsatsin Blog RSS (RU)" : section === "en" ? "Tsatsin Blog RSS (EN)" : "Tsatsin Blog RSS";
+  section === "ru" ? "Tsatsin RSS (RU)" : section === "en" ? "Tsatsin RSS (EN)" : "Tsatsin RSS";
 
 const footerText =
   lang === "ru"
-    ? "Сделано на Astro. Опубликовано через GitHub Pages."
-    : "Built with Astro. Published on GitHub Pages.";
+    ? `<a href="https://github.com/WiegerWolf/blog" target="_blank" rel="noopener">GitHub</a> • <a href="https://www.youtube.com/@ArtemPlays" target="_blank" rel="noopener">YouTube</a>`
+    : `<a href="https://github.com/WiegerWolf/blog" target="_blank" rel="noopener">GitHub</a> • <a href="https://www.youtube.com/@ArtemPlays" target="_blank" rel="noopener">YouTube</a>`;
 ---
 
 <!doctype html>
@@ -98,7 +98,7 @@ const footerText =
     <div class="page-glow" aria-hidden="true"></div>
     <div class="page-glow page-glow-alt" aria-hidden="true"></div>
     <header class="site-shell site-header">
-      <a class="brand" href={brandHref}>Tsatsin Blog</a>
+      <a class="brand" href={brandHref}>Tsatsin</a>
       <nav class="nav-links" aria-label="Main navigation">
         {
           navLinks.map((item) => (
@@ -113,7 +113,7 @@ const footerText =
     </main>
 
     <footer class="site-shell site-footer">
-      <p>{footerText}</p>
+      <p set:html={footerText} />
     </footer>
   </body>
 </html>

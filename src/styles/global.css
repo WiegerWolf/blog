@@ -273,6 +273,16 @@ a {
   padding-bottom: 2.4rem;
 }
 
+.site-footer a {
+  color: var(--muted);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.site-footer a:hover {
+  color: var(--text);
+}
+
 .hero {
   background: var(--surface);
   border: 1px solid var(--line);
@@ -432,6 +442,20 @@ h2 {
 .lang-badge[data-lang="ru"] {
   background: #e9e8fb;
   color: #3f3b86;
+}
+
+.msg-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.5rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  background: rgba(25, 32, 43, 0.08);
+  color: var(--muted);
 }
 
 .post-card {
