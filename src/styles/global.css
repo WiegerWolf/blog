@@ -28,10 +28,50 @@ body {
   font-family: var(--body);
   color: var(--text);
   background:
-    radial-gradient(circle at 8% 8%, #e6f7f4 0%, transparent 36%),
-    radial-gradient(circle at 88% 2%, #feeed8 0%, transparent 32%),
+    radial-gradient(circle at 12% 10%, #e6f7f4 0%, transparent 40%),
+    radial-gradient(circle at 88% 8%, #feeed8 0%, transparent 38%),
     var(--bg);
   line-height: 1.65;
+  overflow-x: hidden;
+}
+
+.ambient-field {
+  position: fixed;
+  inset: -20vmax;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.ambient-blob {
+  position: absolute;
+  width: 56vmax;
+  height: 56vmax;
+  border-radius: 999px;
+  opacity: 0.24;
+  filter: blur(56px);
+  will-change: transform;
+}
+
+.ambient-blob-a {
+  top: -16vmax;
+  left: -14vmax;
+  background: radial-gradient(circle, rgba(15, 118, 110, 0.3) 0%, rgba(15, 118, 110, 0) 68%);
+  animation: blob-drift-a 34s linear infinite;
+}
+
+.ambient-blob-b {
+  top: -22vmax;
+  right: -12vmax;
+  background: radial-gradient(circle, rgba(14, 165, 233, 0.28) 0%, rgba(14, 165, 233, 0) 70%);
+  animation: blob-drift-b 38s linear infinite;
+}
+
+.ambient-blob-c {
+  bottom: -24vmax;
+  left: 18vw;
+  background: radial-gradient(circle, rgba(244, 187, 108, 0.26) 0%, rgba(244, 187, 108, 0) 70%);
+  animation: blob-drift-c 44s linear infinite;
 }
 
 a {
@@ -41,17 +81,159 @@ a {
 
 .page-glow {
   position: fixed;
-  inset: auto -12rem -10rem auto;
-  width: 24rem;
-  height: 24rem;
+  inset: auto -1rem -1rem auto;
+  width: 20rem;
+  height: 20rem;
   border-radius: 999px;
-  background: radial-gradient(circle, rgba(15, 118, 110, 0.18) 0%, rgba(15, 118, 110, 0) 70%);
+  background: radial-gradient(circle, rgba(15, 118, 110, 0.24) 0%, rgba(15, 118, 110, 0) 72%);
   pointer-events: none;
+  animation: glow-float 26s linear infinite;
+  z-index: 0;
+  filter: blur(4px);
+}
+
+.page-glow-alt {
+  inset: -3rem auto auto -2rem;
+  width: 18rem;
+  height: 18rem;
+  background: radial-gradient(circle, rgba(14, 165, 233, 0.21) 0%, rgba(14, 165, 233, 0) 72%);
+  animation: glow-float-alt 30s linear infinite;
+  filter: blur(4px);
+}
+
+@keyframes glow-float {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.72;
+  }
+
+  25% {
+    transform: translate3d(-4px, -5px, 0) scale(1.015);
+    opacity: 0.76;
+  }
+
+  50% {
+    transform: translate3d(-2px, -9px, 0) scale(1.02);
+    opacity: 0.8;
+  }
+
+  75% {
+    transform: translate3d(5px, -4px, 0) scale(1.01);
+    opacity: 0.75;
+  }
+
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.72;
+  }
+}
+
+@keyframes glow-float-alt {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.66;
+  }
+
+  25% {
+    transform: translate3d(4px, 3px, 0) scale(1.01);
+    opacity: 0.7;
+  }
+
+  50% {
+    transform: translate3d(7px, 6px, 0) scale(1.018);
+    opacity: 0.73;
+  }
+
+  75% {
+    transform: translate3d(2px, 8px, 0) scale(1.01);
+    opacity: 0.69;
+  }
+
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.66;
+  }
+}
+
+@keyframes blob-drift-a {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  25% {
+    transform: translate3d(1.2vw, 0.8vh, 0) scale(1.02);
+  }
+
+  50% {
+    transform: translate3d(2vw, -0.4vh, 0) scale(1.03);
+  }
+
+  75% {
+    transform: translate3d(0.7vw, -1vh, 0) scale(1.015);
+  }
+
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes blob-drift-b {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  25% {
+    transform: translate3d(-1vw, 0.9vh, 0) scale(1.015);
+  }
+
+  50% {
+    transform: translate3d(-1.8vw, 1.4vh, 0) scale(1.025);
+  }
+
+  75% {
+    transform: translate3d(-0.8vw, 0.4vh, 0) scale(1.01);
+  }
+
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes blob-drift-c {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  25% {
+    transform: translate3d(0.8vw, -0.6vh, 0) scale(1.01);
+  }
+
+  50% {
+    transform: translate3d(1.5vw, -1.2vh, 0) scale(1.02);
+  }
+
+  75% {
+    transform: translate3d(0.6vw, -0.4vh, 0) scale(1.008);
+  }
+
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ambient-blob,
+  .page-glow,
+  .page-glow-alt {
+    animation: none;
+  }
 }
 
 .site-shell {
   width: min(960px, 92vw);
   margin-inline: auto;
+  position: relative;
+  z-index: 1;
 }
 
 .site-header {
