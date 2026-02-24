@@ -77,7 +77,7 @@ Flow:
 
 1. Write in Telegram Saved Messages.
 2. Forward the full thread to your bot (text + photos in order).
-3. Send `/publish` to the bot.
+3. Send `/publish`, then pick publish date (`first`, `today`, or `YYYY-MM-DD`).
 4. Bot creates a branch and opens a PR to `main`.
 
 Behavior:
@@ -97,7 +97,8 @@ Supported bot commands:
 
 - `/start` - usage help
 - `/status` - current draft counts
-- `/publish` - publish draft as PR
+- `/publish` - choose publish date and publish draft as PR
+- `/cancel` - cancel pending publish date prompt
 - `/reset` - clear draft buffer
 
 The bot registers these commands in Telegram automatically, so they appear in the command menu.

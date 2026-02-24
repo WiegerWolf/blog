@@ -95,6 +95,13 @@ interface DraftItem {
   fileId?: string;
   sourceDate: number;
   originalDate: number;
+  originalDateSource: "forward" | "received";
+}
+
+interface PendingPublishRequest {
+  overrideLang?: Lang;
+  detectedDate: string;
+  createdAt: string;
 }
 
 interface DraftState {
@@ -103,6 +110,7 @@ interface DraftState {
   updatedAt: string;
   lastPublishAttemptAt?: string;
   lastPublishError?: string;
+  pendingPublish?: PendingPublishRequest;
 }
 
 interface PublisherState {
@@ -138,6 +146,7 @@ const TELEGRAM_COMMANDS_DEFAULT: TelegramBotCommand[] = [
   { command: "start", description: "Show usage" },
   { command: "status", description: "Show current draft" },
   { command: "publish", description: "Publish draft as PR" },
+  { command: "cancel", description: "Cancel pending publish" },
   { command: "reset", description: "Clear current draft" }
 ];
 
@@ -145,6 +154,7 @@ const TELEGRAM_COMMANDS_RU: TelegramBotCommand[] = [
   { command: "start", description: "Показать помощь" },
   { command: "status", description: "Показать текущий драфт" },
   { command: "publish", description: "Опубликовать драфт в PR" },
+  { command: "cancel", description: "Отменить ожидание публикации" },
   { command: "reset", description: "Очистить текущий драфт" }
 ];
 
@@ -270,12 +280,49 @@ async function handleUpdate(update: TelegramUpdate, state: PublisherState) {
     return;
   }
 
+  const chatIdKey = String(message.chat.id);
+  const activeDraft = state.drafts[chatIdKey];
+
+  if (activeDraft?.pendingPublish) {
+    if (incomingText) {
+      const selectedDate = parsePublishDateChoice(incomingText, activeDraft.pendingPublish.detectedDate);
+      if (!selectedDate) {
+        await sendMessage(
+          message.chat.id,
+          [
+            "Date not understood.",
+            `Reply with one of: first, today, ${activeDraft.pendingPublish.detectedDate}`,
+            "or a custom date in YYYY-MM-DD format.",
+            "Use /cancel to stop publishing."
+          ].join("\n")
+        );
+        return;
+      }
+
+      await sendMessage(message.chat.id, `Publishing draft with pubDate ${formatDateISO(selectedDate)}...`);
+      const pending = activeDraft.pendingPublish;
+      delete activeDraft.pendingPublish;
+
+      await publishDraft(message.chat.id, chatIdKey, activeDraft, state, {
+        overrideLang: pending.overrideLang,
+        publicationDateOverride: selectedDate,
+        mode: "manual"
+      });
+      return;
+    }
+
+    await sendMessage(
+      message.chat.id,
+      "Finish date choice first (reply: first / today / YYYY-MM-DD), or /cancel."
+    );
+    return;
+  }
+
   const item = extractDraftItem(message);
   if (!item) {
     return;
   }
 
-  const chatIdKey = String(message.chat.id);
   const draft = state.drafts[chatIdKey] ?? {
     items: [],
     createdAt: new Date().toISOString(),
@@ -291,6 +338,7 @@ async function handleUpdate(update: TelegramUpdate, state: PublisherState) {
   draft.updatedAt = new Date().toISOString();
   draft.lastPublishError = undefined;
   draft.lastPublishAttemptAt = undefined;
+  draft.pendingPublish = undefined;
   state.drafts[chatIdKey] = draft;
 
   if (draft.items.length === 1) {
@@ -311,7 +359,8 @@ async function handleCommand(message: TelegramMessage, commandText: string, stat
       [
         "Forward messages from Saved Messages to build a draft.",
         "Use /status to inspect current draft.",
-        "Use /publish to open a PR.",
+        "Use /publish and choose a date (first/today/custom).",
+        "Use /cancel to cancel pending publish.",
         "Use /reset to clear draft."
       ].join("\n")
     );
@@ -326,11 +375,30 @@ async function handleCommand(message: TelegramMessage, commandText: string, stat
 
     const textCount = draft.items.filter((item) => item.kind === "text").length;
     const photoCount = draft.items.filter((item) => item.kind === "photo").length;
+    const detectedDate = draft.items.length > 0 ? getDetectedPublishDate(draft) : null;
+    const pendingLine = draft.pendingPublish
+      ? `\nPending publish date choice: yes (default ${draft.pendingPublish.detectedDate})`
+      : "";
+    const detectedLine = detectedDate
+      ? `\nDetected first date: ${detectedDate.dateIso} (${detectedDate.reliable ? "forward" : "fallback"})`
+      : "";
     const lastErrorLine = draft.lastPublishError ? `\nLast publish error: ${draft.lastPublishError}` : "";
     await sendMessage(
       chatId,
-      `Draft messages: ${draft.items.length}\nText blocks: ${textCount}\nPhotos: ${photoCount}\nStarted: ${draft.createdAt}${lastErrorLine}`
+      `Draft messages: ${draft.items.length}\nText blocks: ${textCount}\nPhotos: ${photoCount}\nStarted: ${draft.createdAt}${detectedLine}${pendingLine}${lastErrorLine}`
     );
+    return;
+  }
+
+  if (command === "/cancel") {
+    if (!draft?.pendingPublish) {
+      await sendMessage(chatId, "Nothing pending.");
+      return;
+    }
+
+    draft.pendingPublish = undefined;
+    state.drafts[chatIdKey] = draft;
+    await sendMessage(chatId, "Pending publish cancelled.");
     return;
   }
 
@@ -346,13 +414,60 @@ async function handleCommand(message: TelegramMessage, commandText: string, stat
       return;
     }
 
-    const overrideLang = args[0] === "ru" || args[0] === "en" ? (args[0] as Lang) : undefined;
+    const parsed = parsePublishArgs(args);
+    if (parsed.error) {
+      await sendMessage(chatId, parsed.error);
+      return;
+    }
 
-    await sendMessage(chatId, "Publishing draft... this can take a moment.");
-    await publishDraft(chatId, chatIdKey, draft, state, {
-      overrideLang,
-      mode: "manual"
-    });
+    const detectedDate = getDetectedPublishDate(draft);
+    const explicitDate = parsed.dateToken
+      ? parsePublishDateChoice(parsed.dateToken, detectedDate.dateIso)
+      : null;
+
+    if (parsed.dateToken && !explicitDate) {
+      await sendMessage(
+        chatId,
+        [
+          `Date value not understood: ${parsed.dateToken}`,
+          "Use one of:",
+          `- /publish first (detected ${detectedDate.dateIso})`,
+          "- /publish today",
+          "- /publish YYYY-MM-DD",
+          "- /publish ru YYYY-MM-DD"
+        ].join("\n")
+      );
+      return;
+    }
+
+    if (explicitDate) {
+      await sendMessage(chatId, `Publishing draft with pubDate ${formatDateISO(explicitDate)}...`);
+      draft.pendingPublish = undefined;
+      await publishDraft(chatId, chatIdKey, draft, state, {
+        overrideLang: parsed.overrideLang,
+        publicationDateOverride: explicitDate,
+        mode: "manual"
+      });
+      return;
+    }
+
+    draft.pendingPublish = {
+      overrideLang: parsed.overrideLang,
+      detectedDate: detectedDate.dateIso,
+      createdAt: new Date().toISOString()
+    };
+    state.drafts[chatIdKey] = draft;
+
+    await sendMessage(
+      chatId,
+      [
+        "Choose publish date.",
+        `Detected first date: ${detectedDate.dateIso}${detectedDate.reliable ? "" : " (fallback)"}`,
+        "Reply with: first / today / YYYY-MM-DD",
+        "Or use: /publish first, /publish today, /publish YYYY-MM-DD",
+        "Use /cancel to stop."
+      ].join("\n")
+    );
     return;
   }
 
@@ -405,14 +520,14 @@ async function publishDraft(
   chatIdKey: string,
   draft: DraftState,
   state: PublisherState,
-  options: { mode: "manual" | "auto"; overrideLang?: Lang }
+  options: { mode: "manual" | "auto"; overrideLang?: Lang; publicationDateOverride?: Date }
 ) {
   let publishResult: PublishResult | null = null;
   draft.lastPublishAttemptAt = new Date().toISOString();
 
   try {
     await assertCleanWorkingTree();
-    publishResult = await buildPostFromDraft(draft, options.overrideLang);
+    publishResult = await buildPostFromDraft(draft, options.overrideLang, options.publicationDateOverride);
     const pullRequestUrl = await commitAndOpenPr(publishResult);
     delete state.drafts[chatIdKey];
 
@@ -440,10 +555,12 @@ async function publishDraft(
 }
 
 function extractDraftItem(message: TelegramMessage): DraftItem | null {
+  const originalDate = getOriginalMessageDateInfo(message);
   const base = {
     messageId: message.message_id,
     sourceDate: message.date,
-    originalDate: getOriginalMessageDate(message)
+    originalDate: originalDate.unix,
+    originalDateSource: originalDate.source
   };
 
   const renderedCaption = renderTelegramFormattedText(message.caption ?? "", message.caption_entities ?? []);
@@ -484,7 +601,11 @@ function extractDraftItem(message: TelegramMessage): DraftItem | null {
   return null;
 }
 
-async function buildPostFromDraft(draft: DraftState, overrideLang?: Lang): Promise<PublishResult> {
+async function buildPostFromDraft(
+  draft: DraftState,
+  overrideLang?: Lang,
+  publicationDateOverride?: Date
+): Promise<PublishResult> {
   const sortedItems = [...draft.items].sort((a, b) => a.messageId - b.messageId);
   const textual = sortedItems
     .flatMap((item) => [item.textPlain, item.captionPlain])
@@ -494,9 +615,10 @@ async function buildPostFromDraft(draft: DraftState, overrideLang?: Lang): Promi
   const lang = overrideLang ?? detectLanguage(textual);
   const firstOriginalDate = sortedItems[0]?.originalDate ?? Math.floor(Date.now() / 1000);
   const candidatePublicationDate = new Date(firstOriginalDate * 1000);
-  const publicationDate = Number.isNaN(candidatePublicationDate.getTime())
+  const detectedPublicationDate = Number.isNaN(candidatePublicationDate.getTime())
     ? new Date()
     : candidatePublicationDate;
+  const publicationDate = publicationDateOverride ?? detectedPublicationDate;
   const title = inferTitle(textual, lang, publicationDate);
   const description = inferDescription(textual, lang);
   const slug = await createUniqueSlug(textual, publicationDate, lang);
@@ -873,18 +995,97 @@ function stripNoiseForLanguageDetection(input: string): string {
     .trim();
 }
 
-function getOriginalMessageDate(message: TelegramMessage): number {
+function getOriginalMessageDateInfo(message: TelegramMessage): { unix: number; source: "forward" | "received" } {
   const forwardOriginDate = message.forward_origin?.date;
   if (typeof forwardOriginDate === "number" && Number.isFinite(forwardOriginDate) && forwardOriginDate > 0) {
-    return forwardOriginDate;
+    return { unix: forwardOriginDate, source: "forward" };
   }
 
   const legacyForwardDate = message.forward_date;
   if (typeof legacyForwardDate === "number" && Number.isFinite(legacyForwardDate) && legacyForwardDate > 0) {
-    return legacyForwardDate;
+    return { unix: legacyForwardDate, source: "forward" };
   }
 
-  return message.date;
+  return { unix: message.date, source: "received" };
+}
+
+function getDetectedPublishDate(draft: DraftState): { date: Date; dateIso: string; reliable: boolean } {
+  const sorted = [...draft.items].sort((a, b) => a.messageId - b.messageId);
+  const first = sorted[0];
+
+  const firstDateUnix = first?.originalDate ?? Math.floor(Date.now() / 1000);
+  const parsed = new Date(firstDateUnix * 1000);
+  const safeDate = Number.isNaN(parsed.getTime()) ? new Date() : parsed;
+
+  const reliable = sorted.length > 0 && sorted.every((item) => item.originalDateSource === "forward");
+  return {
+    date: safeDate,
+    dateIso: formatDateISO(safeDate),
+    reliable
+  };
+}
+
+function parsePublishArgs(args: string[]): { overrideLang?: Lang; dateToken?: string; error?: string } {
+  const tokens = args.map((arg) => arg.trim()).filter(Boolean);
+  if (tokens.length === 0) {
+    return {};
+  }
+
+  let overrideLang: Lang | undefined;
+  let index = 0;
+
+  const maybeLang = tokens[0]?.toLowerCase();
+  if (maybeLang === "ru" || maybeLang === "en") {
+    overrideLang = maybeLang;
+    index = 1;
+  }
+
+  const remaining = tokens.slice(index);
+  if (remaining.length > 1) {
+    return {
+      error: "Usage: /publish [ru|en] [first|today|YYYY-MM-DD]"
+    };
+  }
+
+  return {
+    overrideLang,
+    dateToken: remaining[0]
+  };
+}
+
+function parsePublishDateChoice(input: string, detectedDateIso: string): Date | null {
+  const value = input.trim().toLowerCase();
+
+  if (value === "first") {
+    return parseIsoDate(detectedDateIso);
+  }
+
+  if (value === "today") {
+    return parseIsoDate(formatDateISO(new Date()));
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return parseIsoDate(value);
+  }
+
+  return null;
+}
+
+function parseIsoDate(value: string): Date | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return null;
+  }
+
+  const parsed = new Date(`${value}T12:00:00Z`);
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  return parsed;
+}
+
+function formatDateISO(date: Date): string {
+  return date.toISOString().slice(0, 10);
 }
 
 function inferTitle(input: string, lang: Lang, date: Date): string {
