@@ -656,6 +656,20 @@ h2 {
   color: inherit;
 }
 
+.post-prose .youtube-embed {
+  margin: 1rem 0;
+  width: min(100%, 68ch);
+}
+
+.post-prose .youtube-embed iframe {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  background: #000;
+}
+
 .post-prose img {
   width: auto;
   max-width: 100%;

@@ -513,6 +513,12 @@ async function buildPostFromDraft(draft: DraftState, overrideLang?: Lang): Promi
   for (const item of sortedItems) {
     if (item.kind === "text" && item.text) {
       bodyBlocks.push(item.text);
+
+      const youtubeVideoIds = extractYouTubeVideoIds(item.textPlain ?? "");
+      for (const videoId of youtubeVideoIds) {
+        bodyBlocks.push(renderYouTubeEmbed(videoId));
+      }
+
       continue;
     }
 
@@ -1097,6 +1103,70 @@ function entityPriority(entity: TelegramMessageEntity): number {
 
 function normalizeLineEndings(input: string): string {
   return input.replace(/\r\n/g, "\n");
+}
+
+function extractYouTubeVideoIds(input: string): string[] {
+  const source = normalizeText(input);
+  if (!source) {
+    return [];
+  }
+
+  const matches = source.match(/(?:https?:\/\/|www\.)[^\s<>()"']+/g) ?? [];
+  const ids: string[] = [];
+  const seen = new Set<string>();
+
+  for (const match of matches) {
+    const cleaned = match.replace(/[),.;!?]+$/g, "");
+    const videoId = extractYouTubeVideoIdFromUrl(cleaned);
+    if (!videoId || seen.has(videoId)) {
+      continue;
+    }
+
+    seen.add(videoId);
+    ids.push(videoId);
+  }
+
+  return ids;
+}
+
+function extractYouTubeVideoIdFromUrl(rawUrl: string): string | null {
+  const normalizedUrl = rawUrl.startsWith("http://") || rawUrl.startsWith("https://") ? rawUrl : `https://${rawUrl}`;
+
+  let parsed: URL;
+  try {
+    parsed = new URL(normalizedUrl);
+  } catch {
+    return null;
+  }
+
+  const host = parsed.hostname.toLowerCase();
+  const pathSegments = parsed.pathname.split("/").filter(Boolean);
+
+  let candidate = "";
+
+  if (host === "youtu.be") {
+    candidate = pathSegments[0] ?? "";
+  } else if (host.endsWith("youtube.com") || host.endsWith("youtube-nocookie.com")) {
+    if (pathSegments[0] === "watch") {
+      candidate = parsed.searchParams.get("v") ?? "";
+    } else if (pathSegments[0] === "shorts" || pathSegments[0] === "live" || pathSegments[0] === "embed") {
+      candidate = pathSegments[1] ?? "";
+    }
+  }
+
+  if (!/^[a-zA-Z0-9_-]{11}$/.test(candidate)) {
+    return null;
+  }
+
+  return candidate;
+}
+
+function renderYouTubeEmbed(videoId: string): string {
+  return [
+    '<div class="youtube-embed">',
+    `  <iframe src="https://www.youtube-nocookie.com/embed/${videoId}" title="YouTube video" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>`,
+    "</div>"
+  ].join("\n");
 }
 
 function appendYamlBlockField(lines: string[], key: string, value: string) {
