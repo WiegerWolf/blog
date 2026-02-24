@@ -1,5 +1,6 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
+import { getIndexExcerpt } from "../../lib/postPreview";
 
 type BlogPostModule = {
   frontmatter: {
@@ -15,7 +16,7 @@ const postModules = Object.values(import.meta.glob("./blog/*.md", { eager: true 
 const posts = postModules
   .map((post) => ({
     title: post.frontmatter.title,
-    description: post.frontmatter.description,
+    excerpt: getIndexExcerpt(post.frontmatter.title, post.frontmatter.description),
     pubDate: new Date(post.frontmatter.pubDate),
     url: post.url
   }))
@@ -47,7 +48,7 @@ const posts = postModules
               })}
             </p>
             <h3>{post.title}</h3>
-            <p>{post.description}</p>
+            {post.excerpt && <p>{post.excerpt}</p>}
           </a>
         ))
       }
