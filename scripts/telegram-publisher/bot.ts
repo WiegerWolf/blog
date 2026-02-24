@@ -839,11 +839,14 @@ async function createUniqueSlug(textual: string, date: Date, lang: Lang): Promis
 }
 
 function detectLanguage(input: string): Lang {
-  const source = input || "";
+  const source = stripNoiseForLanguageDetection(input || "");
+  const fallbackSource = input || "";
+
+  const candidate = source.trim() ? source : fallbackSource;
   let cyrillicCount = 0;
   let latinCount = 0;
 
-  for (const char of source) {
+  for (const char of candidate) {
     if (/[A-Za-z]/.test(char)) {
       latinCount += 1;
     } else if (/[\u0400-\u04FF]/u.test(char)) {
@@ -856,6 +859,18 @@ function detectLanguage(input: string): Lang {
   }
 
   return "en";
+}
+
+function stripNoiseForLanguageDetection(input: string): string {
+  return normalizeLineEndings(input)
+    .replace(/https?:\/\/[^\s)]+/gi, " ")
+    .replace(/www\.[^\s)]+/gi, " ")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\[[^\]]*\]\([^)]*\)/g, " ")
+    .replace(/`[^`]*`/g, " ")
+    .replace(/[\*_~>#]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function getOriginalMessageDate(message: TelegramMessage): number {
