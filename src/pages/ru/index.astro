@@ -9,6 +9,7 @@ type BlogPostModule = {
     pubDate: string | Date;
     messageCount?: number;
     previewImages?: string[];
+    youtubeVideoIds?: string[];
     singleMessageHtml?: string;
   };
   url: string;
@@ -23,6 +24,7 @@ const posts = postModules
     url: post.url,
     messageCount: post.frontmatter.messageCount ?? 0,
     previewImages: (post.frontmatter.previewImages ?? []).slice(0, 4),
+    youtubeVideoIds: (post.frontmatter.youtubeVideoIds ?? []).slice(0, 2),
     singleMessageHtml: (post.frontmatter.singleMessageHtml ?? "").trim()
   }))
   .sort((a, b) => b.pubDate.getTime() - a.pubDate.getTime());
@@ -38,50 +40,66 @@ const posts = postModules
     <div class="thread-list">
       {
         posts.map((post) => {
-          const isQuickThread = post.messageCount === 1 && post.previewImages.length === 1;
+          const isQuickThread =
+            post.messageCount === 1 && (post.previewImages.length === 1 || post.youtubeVideoIds.length > 0);
+
+          if (isQuickThread && post.singleMessageHtml) {
+            return (
+              <article class="thread-item thread-item-quick">
+                <p class="thread-meta">
+                  <a class="thread-quick-link" href={post.url}>
+                    {post.pubDate.toLocaleDateString("ru-RU", {
+                      year: "numeric",
+                      month: "short",
+                      day: "numeric"
+                    })}
+                  </a>
+                </p>
+                {post.previewImages.length > 0 && (
+                  <div class="thread-preview" data-count={post.previewImages.length}>
+                    {post.previewImages.map((image) => (
+                      <img src={image} alt="" loading="lazy" decoding="async" />
+                    ))}
+                  </div>
+                )}
+                {post.youtubeVideoIds.length > 0 && (
+                  <div class="thread-embed">
+                    <iframe
+                      src={`https://www.youtube-nocookie.com/embed/${post.youtubeVideoIds[0]}`}
+                      title="YouTube video"
+                      loading="lazy"
+                      referrerpolicy="strict-origin-when-cross-origin"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowfullscreen
+                    ></iframe>
+                  </div>
+                )}
+                <div class="thread-single" set:html={post.singleMessageHtml} />
+              </article>
+            );
+          }
 
           return (
-            <a class:list={["thread-item", isQuickThread && "thread-item-quick"]} href={post.url}>
-            <p class="thread-meta">
-              <span class="card-date">
-                {post.pubDate.toLocaleDateString("ru-RU", {
-                  year: "numeric",
-                  month: "short",
-                  day: "numeric"
-                })}
-              </span>
-              {post.messageCount > 1 && (
-                <span class="msg-count">{post.messageCount} сообщ.</span>
+            <a class="thread-item" href={post.url}>
+              <p class="thread-meta">
+                <span class="card-date">
+                  {post.pubDate.toLocaleDateString("ru-RU", {
+                    year: "numeric",
+                    month: "short",
+                    day: "numeric"
+                  })}
+                </span>
+                {post.messageCount > 1 && <span class="msg-count">{post.messageCount} сообщ.</span>}
+              </p>
+              <h3 class="thread-main">{post.title}</h3>
+              {post.previewImages.length > 0 && (
+                <div class="thread-preview" data-count={post.previewImages.length}>
+                  {post.previewImages.map((image) => (
+                    <img src={image} alt="" loading="lazy" decoding="async" />
+                  ))}
+                </div>
               )}
-            </p>
-            {
-              isQuickThread && post.singleMessageHtml
-                ? (
-                    <>
-                      {post.previewImages.length > 0 && (
-                        <div class="thread-preview" data-count={post.previewImages.length}>
-                          {post.previewImages.map((image) => (
-                            <img src={image} alt="" loading="lazy" decoding="async" />
-                          ))}
-                        </div>
-                      )}
-                      <p class="thread-single" set:html={post.singleMessageHtml} />
-                    </>
-                  )
-                : (
-                    <>
-                      <h3 class="thread-main">{post.title}</h3>
-                      {post.previewImages.length > 0 && (
-                        <div class="thread-preview" data-count={post.previewImages.length}>
-                          {post.previewImages.map((image) => (
-                            <img src={image} alt="" loading="lazy" decoding="async" />
-                          ))}
-                        </div>
-                      )}
-                    </>
-                  )
-            }
-            {!isQuickThread && <p class="thread-open">Открыть тред →</p>}
+              <p class="thread-open">Открыть тред →</p>
             </a>
           );
         })

@@ -413,6 +413,12 @@ h2 {
   font-weight: 600;
 }
 
+.thread-quick-link {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .thread-dot {
   opacity: 0.6;
 }
@@ -493,6 +499,20 @@ h2 {
 
 .thread-preview[data-count="3"] img:first-child {
   grid-column: span 2;
+}
+
+.thread-embed {
+  margin-top: 0.65rem;
+  width: min(100%, 42rem);
+}
+
+.thread-embed iframe {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  background: #000;
 }
 
 .thread-open {

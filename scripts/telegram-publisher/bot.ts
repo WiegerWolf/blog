@@ -630,6 +630,7 @@ async function buildPostFromDraft(
   const bodyBlocks: string[] = [];
   const mediaPaths: string[] = [];
   const previewImages: string[] = [];
+  const previewYoutubeVideoIds: string[] = [];
   let mediaIndex = 0;
 
   for (const item of sortedItems) {
@@ -639,6 +640,9 @@ async function buildPostFromDraft(
       const youtubeVideoIds = extractYouTubeVideoIds(item.textPlain ?? "");
       for (const videoId of youtubeVideoIds) {
         bodyBlocks.push(renderYouTubeEmbed(videoId));
+        if (!previewYoutubeVideoIds.includes(videoId)) {
+          previewYoutubeVideoIds.push(videoId);
+        }
       }
 
       continue;
@@ -683,6 +687,13 @@ async function buildPostFromDraft(
     frontmatter.push("previewImages:");
     for (const previewImagePath of previewImages) {
       frontmatter.push(`  - "${escapeYamlString(previewImagePath)}"`);
+    }
+  }
+
+  if (previewYoutubeVideoIds.length > 0) {
+    frontmatter.push("youtubeVideoIds:");
+    for (const youtubeVideoId of previewYoutubeVideoIds) {
+      frontmatter.push(`  - "${escapeYamlString(youtubeVideoId)}"`);
     }
   }
 
