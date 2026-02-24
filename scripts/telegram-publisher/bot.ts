@@ -819,7 +819,7 @@ function inferTitle(input: string, lang: Lang, date: Date): string {
     return lang === "ru" ? `Tred ${date.toISOString().slice(0, 10)}` : `Thread ${date.toISOString().slice(0, 10)}`;
   }
 
-  return truncate(clean, 72);
+  return clean;
 }
 
 function inferDescription(input: string, lang: Lang): string {
