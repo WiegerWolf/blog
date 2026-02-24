@@ -544,6 +544,34 @@ h2 {
   text-underline-offset: 2px;
 }
 
+.post-prose code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+.post-prose pre {
+  margin: 1rem 0;
+  padding: 0.8rem 0.95rem;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(25, 32, 43, 0.04);
+}
+
+.post-prose pre code {
+  font-size: 0.92rem;
+}
+
+.post-prose .tg-spoiler {
+  color: transparent;
+  background: rgba(25, 32, 43, 0.2);
+  border-radius: 4px;
+  padding: 0 0.2em;
+}
+
+.post-prose .tg-spoiler:hover {
+  color: inherit;
+}
+
 .post-prose img {
   width: auto;
   max-width: 100%;

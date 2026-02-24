@@ -26,13 +26,41 @@ interface TelegramDocument {
   mime_type?: string;
 }
 
+interface TelegramMessageEntity {
+  type:
+    | "bold"
+    | "italic"
+    | "underline"
+    | "strikethrough"
+    | "spoiler"
+    | "code"
+    | "pre"
+    | "text_link"
+    | "text_mention"
+    | "url"
+    | "email"
+    | "phone_number"
+    | "mention"
+    | "hashtag"
+    | "cashtag"
+    | "bot_command"
+    | "custom_emoji";
+  offset: number;
+  length: number;
+  url?: string;
+  language?: string;
+  user?: TelegramUser;
+}
+
 interface TelegramMessage {
   message_id: number;
   date: number;
   from?: TelegramUser;
   chat: TelegramChat;
   text?: string;
+  entities?: TelegramMessageEntity[];
   caption?: string;
+  caption_entities?: TelegramMessageEntity[];
   photo?: TelegramPhotoSize[];
   document?: TelegramDocument;
 }
@@ -55,7 +83,9 @@ interface DraftItem {
   messageId: number;
   kind: "text" | "photo";
   text?: string;
+  textPlain?: string;
   caption?: string;
+  captionPlain?: string;
   fileId?: string;
   sourceDate: number;
 }
@@ -375,13 +405,17 @@ function extractDraftItem(message: TelegramMessage): DraftItem | null {
     sourceDate: message.date
   };
 
+  const renderedCaption = renderTelegramFormattedText(message.caption ?? "", message.caption_entities ?? []);
+  const plainCaption = normalizeText(message.caption ?? "") || undefined;
+
   if (message.photo && message.photo.length > 0) {
     const largest = [...message.photo].sort((a, b) => (b.file_size ?? 0) - (a.file_size ?? 0))[0];
     return {
       ...base,
       kind: "photo",
       fileId: largest.file_id,
-      caption: normalizeText(message.caption ?? "") || undefined
+      caption: renderedCaption || undefined,
+      captionPlain: plainCaption
     };
   }
 
@@ -390,16 +424,19 @@ function extractDraftItem(message: TelegramMessage): DraftItem | null {
       ...base,
       kind: "photo",
       fileId: message.document.file_id,
-      caption: normalizeText(message.caption ?? "") || undefined
+      caption: renderedCaption || undefined,
+      captionPlain: plainCaption
     };
   }
 
-  const text = normalizeText(message.text ?? "");
-  if (text) {
+  const renderedText = renderTelegramFormattedText(message.text ?? "", message.entities ?? []);
+  const plainText = normalizeText(message.text ?? "");
+  if (renderedText) {
     return {
       ...base,
       kind: "text",
-      text
+      text: renderedText,
+      textPlain: plainText || undefined
     };
   }
 
@@ -409,7 +446,7 @@ function extractDraftItem(message: TelegramMessage): DraftItem | null {
 async function buildPostFromDraft(draft: DraftState, overrideLang?: Lang): Promise<PublishResult> {
   const sortedItems = [...draft.items].sort((a, b) => a.messageId - b.messageId);
   const textual = sortedItems
-    .flatMap((item) => [item.text, item.caption])
+    .flatMap((item) => [item.textPlain, item.captionPlain])
     .filter((entry): entry is string => Boolean(entry && entry.trim()))
     .join("\n\n");
 
@@ -439,13 +476,13 @@ async function buildPostFromDraft(draft: DraftState, overrideLang?: Lang): Promi
       const saved = await downloadTelegramImage(item.fileId, imagesDir, mediaIndex);
       mediaPaths.push(saved.absolutePath);
 
-      const altText = inferImageAlt(item.caption, mediaIndex, lang);
+      const altText = inferImageAlt(item.captionPlain, mediaIndex, lang);
       if (item.caption && item.caption.trim()) {
         bodyBlocks.push(
           [
             "<figure>",
             `  <img src=\"${saved.publicPath}\" alt=\"${escapeHtmlAttr(altText)}\" />`,
-            `  <figcaption>${escapeHtmlText(item.caption)}</figcaption>`,
+            `  <figcaption>${item.caption}</figcaption>`,
             "</figure>"
           ].join("\n")
         );
@@ -792,6 +829,195 @@ function inferImageAlt(caption: string | undefined, index: number, lang: Lang): 
   }
 
   return lang === "ru" ? `Thread image ${index}` : `Thread image ${index}`;
+}
+
+interface RichTelegramEntity extends TelegramMessageEntity {
+  id: number;
+  end: number;
+}
+
+function renderTelegramFormattedText(text: string, entities: TelegramMessageEntity[]): string {
+  const source = normalizeLineEndings(text).trim();
+  if (!source) {
+    return "";
+  }
+
+  const validEntities = normalizeTelegramEntities(source, entities);
+  if (!validEntities.length) {
+    return escapeHtmlText(source);
+  }
+
+  const startsAt = new Map<number, RichTelegramEntity[]>();
+  for (const entity of validEntities) {
+    const existing = startsAt.get(entity.offset) ?? [];
+    existing.push(entity);
+    startsAt.set(entity.offset, existing);
+  }
+
+  for (const list of startsAt.values()) {
+    list.sort((a, b) => b.length - a.length || entityPriority(a) - entityPriority(b));
+  }
+
+  let output = "";
+  const stack: RichTelegramEntity[] = [];
+
+  for (let position = 0; position <= source.length; position += 1) {
+    while (stack.length > 0 && stack[stack.length - 1]?.end === position) {
+      const closing = stack.pop();
+      if (closing) {
+        output += entityCloseTag(closing);
+      }
+    }
+
+    const openingEntities = startsAt.get(position) ?? [];
+    for (const entity of openingEntities) {
+      const top = stack[stack.length - 1];
+      if (top && entity.end > top.end) {
+        continue;
+      }
+
+      const openTag = entityOpenTag(entity, source);
+      const closeTag = entityCloseTag(entity);
+      if (!openTag || !closeTag) {
+        continue;
+      }
+
+      output += openTag;
+      stack.push(entity);
+    }
+
+    if (position === source.length) {
+      break;
+    }
+
+    output += escapeHtmlText(source[position] ?? "");
+  }
+
+  while (stack.length > 0) {
+    const closing = stack.pop();
+    if (closing) {
+      output += entityCloseTag(closing);
+    }
+  }
+
+  return output.trim();
+}
+
+function normalizeTelegramEntities(text: string, entities: TelegramMessageEntity[]): RichTelegramEntity[] {
+  return entities
+    .map((entity, id) => ({
+      ...entity,
+      id,
+      end: entity.offset + entity.length
+    }))
+    .filter(
+      (entity) =>
+        Number.isInteger(entity.offset) &&
+        Number.isInteger(entity.length) &&
+        entity.length > 0 &&
+        entity.offset >= 0 &&
+        entity.end <= text.length
+    )
+    .sort((a, b) => a.offset - b.offset || b.length - a.length || entityPriority(a) - entityPriority(b));
+}
+
+function entityOpenTag(entity: RichTelegramEntity, source: string): string {
+  const segment = source.slice(entity.offset, entity.end);
+
+  switch (entity.type) {
+    case "bold":
+      return "<strong>";
+    case "italic":
+      return "<em>";
+    case "underline":
+      return "<u>";
+    case "strikethrough":
+      return "<s>";
+    case "spoiler":
+      return '<span class="tg-spoiler">';
+    case "code":
+      return "<code>";
+    case "pre": {
+      const language = (entity.language ?? "").match(/^[a-zA-Z0-9_-]{1,32}$/)?.[0];
+      return language ? `<pre><code class="language-${language}">` : "<pre><code>";
+    }
+    case "text_link":
+      return entity.url
+        ? `<a href="${escapeHtmlAttr(entity.url)}" target="_blank" rel="noopener noreferrer">`
+        : "";
+    case "text_mention":
+      return entity.user?.id
+        ? `<a href="tg://user?id=${entity.user.id}" target="_blank" rel="noopener noreferrer">`
+        : "";
+    case "url": {
+      const href = segment.startsWith("http://") || segment.startsWith("https://") ? segment : `https://${segment}`;
+      return `<a href="${escapeHtmlAttr(href)}" target="_blank" rel="noopener noreferrer">`;
+    }
+    case "email":
+      return `<a href="mailto:${escapeHtmlAttr(segment)}">`;
+    case "phone_number":
+      return `<a href="tel:${escapeHtmlAttr(segment)}">`;
+    default:
+      return "";
+  }
+}
+
+function entityCloseTag(entity: RichTelegramEntity): string {
+  switch (entity.type) {
+    case "bold":
+      return "</strong>";
+    case "italic":
+      return "</em>";
+    case "underline":
+      return "</u>";
+    case "strikethrough":
+      return "</s>";
+    case "spoiler":
+      return "</span>";
+    case "code":
+      return "</code>";
+    case "pre":
+      return "</code></pre>";
+    case "text_link":
+    case "text_mention":
+    case "url":
+    case "email":
+    case "phone_number":
+      return "</a>";
+    default:
+      return "";
+  }
+}
+
+function entityPriority(entity: TelegramMessageEntity): number {
+  switch (entity.type) {
+    case "pre":
+      return 0;
+    case "code":
+      return 1;
+    case "bold":
+      return 2;
+    case "italic":
+      return 3;
+    case "underline":
+      return 4;
+    case "strikethrough":
+      return 5;
+    case "spoiler":
+      return 6;
+    case "text_link":
+    case "text_mention":
+    case "url":
+    case "email":
+    case "phone_number":
+      return 7;
+    default:
+      return 10;
+  }
+}
+
+function normalizeLineEndings(input: string): string {
+  return input.replace(/\r\n/g, "\n");
 }
 
 function normalizeText(input: string): string {
