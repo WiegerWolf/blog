@@ -5,8 +5,8 @@ A simple and modern blog built with Astro and deployed to GitHub Pages.
 ## Run locally
 
 ```bash
-npm install
-npm run dev
+bun install
+bun run dev
 ```
 
 ## Write a post
@@ -47,6 +47,8 @@ Optional caption:
 1. Push this repository to GitHub.
 2. In GitHub repo settings, set **Pages** source to **GitHub Actions**.
 3. Push to `main` and the workflow in `.github/workflows/deploy.yml` will publish the site.
+
+This project uses Bun for local development and CI builds.
 
 Custom domain is set by `public/CNAME`:
 
