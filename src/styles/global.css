@@ -469,21 +469,25 @@ h2 {
 }
 
 .post-prose img {
-  width: 100%;
+  width: auto;
+  max-width: 100%;
   height: auto;
+  display: block;
   border-radius: 14px;
   border: 1px solid var(--line);
   box-shadow: var(--shadow);
 }
 
 .post-prose figure {
-  margin: 1.4rem 0;
+  margin: 1rem 0;
 }
 
 .post-prose figcaption {
-  margin-top: 0.5rem;
-  color: var(--muted);
-  font-size: 0.92rem;
+  margin-top: 0.85rem;
+  max-width: 68ch;
+  color: inherit;
+  font-size: inherit;
+  line-height: inherit;
 }
 
 @media (max-width: 680px) {

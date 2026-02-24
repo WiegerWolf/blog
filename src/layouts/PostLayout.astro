@@ -7,6 +7,8 @@ interface Frontmatter {
   pubDate: string | Date;
   lang?: "en" | "ru";
   translationKey?: string;
+  showHeader?: boolean;
+  showDate?: boolean;
 }
 
 interface Props {
@@ -16,6 +18,8 @@ interface Props {
   pubDate?: string | Date;
   lang?: "en" | "ru";
   translationKey?: string;
+  showHeader?: boolean;
+  showDate?: boolean;
 }
 
 const props = Astro.props as Props;
@@ -24,6 +28,8 @@ const data = props.frontmatter ?? props;
 const title = data.title ?? "Untitled";
 const description = data.description ?? "";
 const lang = data.lang === "ru" ? "ru" : "en";
+const showHeader = data.showHeader === true;
+const showDate = data.showDate !== false;
 const published = data.pubDate ? new Date(data.pubDate) : new Date();
 const safePublished = Number.isNaN(published.getTime()) ? new Date() : published;
 const publishedIso = safePublished.toISOString();
@@ -36,13 +42,21 @@ const publishedLabel = safePublished.toLocaleDateString(lang === "ru" ? "ru-RU" 
 
 <BaseLayout title={`${title} | Tsatsin Blog`} description={description} lang={lang}>
   <article class="post-wrap">
-    <header class="post-header">
-      <p class="post-date">
-        <time datetime={publishedIso}>{publishedLabel}</time>
-      </p>
-      <h1>{title}</h1>
-      <p>{description}</p>
-    </header>
+    {
+      showDate && (
+        <p class="post-date">
+          <time datetime={publishedIso}>{publishedLabel}</time>
+        </p>
+      )
+    }
+    {
+      showHeader && (
+        <header class="post-header">
+          <h1>{title}</h1>
+          <p>{description}</p>
+        </header>
+      )
+    }
     <div class="post-prose">
       <slot />
     </div>
