@@ -223,7 +223,7 @@ async function handleUpdate(update: TelegramUpdate, state: PublisherState) {
   state.drafts[chatIdKey] = draft;
 
   if (draft.items.length === 1) {
-    await sendMessage(message.chat.id, "Draft started. Forward your story and run /publish when ready.");
+    await sendMessage(message.chat.id, "Draft started. Forward your thread and run /publish when ready.");
   }
 }
 
@@ -501,7 +501,7 @@ async function commitAndOpenPr(publish: PublishResult): Promise<string> {
         "user.email=telegram-publisher-bot@users.noreply.github.com",
         "commit",
         "-m",
-        `add ${publish.lang} story ${publish.slug}`
+        `add ${publish.lang} thread ${publish.slug}`
       ],
       {
         cwd: config.repoDir,
@@ -520,12 +520,12 @@ async function commitAndOpenPr(publish: PublishResult): Promise<string> {
       `/repos/${config.githubRepo}/pulls`,
       "POST",
       {
-        title: `Add ${publish.lang.toUpperCase()} story: ${publish.title}`,
+        title: `Add ${publish.lang.toUpperCase()} thread: ${publish.title}`,
         head: branch,
         base: config.baseBranch,
         body: [
           "## Summary",
-          `- Adds one new ${publish.lang.toUpperCase()} story imported from Telegram`,
+          `- Adds one new ${publish.lang.toUpperCase()} thread imported from Telegram`,
           `- Preserves message order and media sequencing`,
           `- Source file: \`${postRelative}\``
         ].join("\n")
@@ -716,7 +716,7 @@ async function saveState(state: PublisherState) {
 async function createUniqueSlug(textual: string, date: Date, lang: Lang): Promise<string> {
   const hash = createHash("sha256").update(textual || date.toISOString()).digest("hex").slice(0, 8);
   const datePart = date.toISOString().slice(0, 10);
-  const candidate = `story-${lang}-${datePart}-${hash}`;
+  const candidate = `thread-${lang}-${datePart}-${hash}`;
 
   const postPath = path.join(config.repoDir, "src", "pages", lang, "blog", `${candidate}.md`);
   try {
@@ -750,7 +750,7 @@ function detectLanguage(input: string): Lang {
 function inferTitle(input: string, lang: Lang, date: Date): string {
   const normalized = normalizeText(input);
   if (!normalized) {
-    return lang === "ru" ? `Istoriya ${date.toISOString().slice(0, 10)}` : `Story ${date.toISOString().slice(0, 10)}`;
+    return lang === "ru" ? `Tred ${date.toISOString().slice(0, 10)}` : `Thread ${date.toISOString().slice(0, 10)}`;
   }
 
   const firstLine = normalized
@@ -759,13 +759,13 @@ function inferTitle(input: string, lang: Lang, date: Date): string {
     .find((line) => line.length >= 12);
 
   if (!firstLine) {
-    return lang === "ru" ? `Istoriya ${date.toISOString().slice(0, 10)}` : `Story ${date.toISOString().slice(0, 10)}`;
+    return lang === "ru" ? `Tred ${date.toISOString().slice(0, 10)}` : `Thread ${date.toISOString().slice(0, 10)}`;
   }
 
   const sentence = firstLine.split(/(?<=[.!?])\s/)[0] ?? firstLine;
   const clean = sentence.replace(/[#*_`>\[\]]/g, "").trim();
   if (clean.length < 8) {
-    return lang === "ru" ? `Istoriya ${date.toISOString().slice(0, 10)}` : `Story ${date.toISOString().slice(0, 10)}`;
+    return lang === "ru" ? `Tred ${date.toISOString().slice(0, 10)}` : `Thread ${date.toISOString().slice(0, 10)}`;
   }
 
   return truncate(clean, 72);
@@ -775,8 +775,8 @@ function inferDescription(input: string, lang: Lang): string {
   const normalized = normalizeText(input).replace(/\s+/g, " ").trim();
   if (!normalized) {
     return lang === "ru"
-      ? "Story imported from Telegram with ordered messages and media."
-      : "Story imported from Telegram with ordered messages and media.";
+      ? "Thread imported from Telegram with ordered messages and media."
+      : "Thread imported from Telegram with ordered messages and media.";
   }
 
   return truncate(normalized, 155);
@@ -788,7 +788,7 @@ function inferImageAlt(caption: string | undefined, index: number, lang: Lang): 
     return truncate(normalizedCaption.replace(/\s+/g, " "), 90);
   }
 
-  return lang === "ru" ? `Story image ${index}` : `Story image ${index}`;
+  return lang === "ru" ? `Thread image ${index}` : `Thread image ${index}`;
 }
 
 function normalizeText(input: string): string {

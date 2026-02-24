@@ -1,28 +1,21 @@
-function normalizeForCompare(input: string): string {
-  return input
-    .toLowerCase()
-    .replace(/[\s\p{P}\p{S}]+/gu, "")
-    .trim();
+function normalize(input: string): string {
+  return input.replace(/\s+/g, " ").trim();
 }
 
-export function getIndexExcerpt(title: string, description: string): string | null {
-  const cleanTitle = title.trim();
-  const cleanDescription = description.trim();
-
-  if (!cleanDescription) {
-    return null;
+function truncate(input: string, limit: number): string {
+  if (input.length <= limit) {
+    return input;
   }
 
-  const titleKey = normalizeForCompare(cleanTitle);
-  const descriptionKey = normalizeForCompare(cleanDescription);
+  return `${input.slice(0, limit - 1).trimEnd()}…`;
+}
 
-  if (!titleKey || !descriptionKey) {
-    return cleanDescription;
+export function getFeedTitle(title: string, description: string): string {
+  const source = normalize(title) || normalize(description);
+  if (!source) {
+    return "Thread";
   }
 
-  if (descriptionKey.startsWith(titleKey) || titleKey.startsWith(descriptionKey)) {
-    return null;
-  }
-
-  return cleanDescription;
+  const sentence = source.split(/(?<=[.!?…])\s+/)[0] ?? source;
+  return truncate(sentence, 120);
 }

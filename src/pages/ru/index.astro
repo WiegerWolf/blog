@@ -1,6 +1,6 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
-import { getIndexExcerpt } from "../../lib/postPreview";
+import { getFeedTitle } from "../../lib/postPreview";
 
 type BlogPostModule = {
   frontmatter: {
@@ -15,8 +15,7 @@ const postModules = Object.values(import.meta.glob("./blog/*.md", { eager: true 
 
 const posts = postModules
   .map((post) => ({
-    title: post.frontmatter.title,
-    excerpt: getIndexExcerpt(post.frontmatter.title, post.frontmatter.description),
+    title: getFeedTitle(post.frontmatter.title, post.frontmatter.description),
     pubDate: new Date(post.frontmatter.pubDate),
     url: post.url
   }))
@@ -35,7 +34,7 @@ const posts = postModules
   </section>
 
   <section>
-    <h2 class="section-title">Лента историй</h2>
+    <h2 class="section-title">Лента тредов</h2>
     <div class="thread-list">
       {
         posts.map((post) => (
@@ -49,11 +48,10 @@ const posts = postModules
                 })}
               </span>
               <span class="thread-dot" aria-hidden="true">•</span>
-              <span>story</span>
+              <span>тред</span>
             </p>
             <h3 class="thread-main">{post.title}</h3>
-            {post.excerpt && <p class="thread-snippet">{post.excerpt}</p>}
-            <p class="thread-open">Открыть историю →</p>
+            <p class="thread-open">Открыть тред →</p>
           </a>
         ))
       }

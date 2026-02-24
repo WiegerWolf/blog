@@ -401,15 +401,6 @@ h2 {
   letter-spacing: 0;
 }
 
-.thread-snippet {
-  margin: 0.45rem 0 0;
-  color: var(--muted);
-  display: -webkit-box;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-}
-
 .thread-open {
   margin: 0.7rem 0 0;
   color: var(--accent);

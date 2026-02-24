@@ -71,12 +71,12 @@ Optional caption:
 
 ## Telegram publisher bot (Saved Messages -> PR)
 
-This repo includes a private Telegram bot that turns forwarded story messages into a blog post PR.
+This repo includes a private Telegram bot that turns forwarded thread messages into a blog post PR.
 
 Flow:
 
 1. Write in Telegram Saved Messages.
-2. Forward the full story to your bot (text + photos in order).
+2. Forward the full thread to your bot (text + photos in order).
 3. Send `/publish` to the bot.
 4. Bot creates a branch and opens a PR to `main`.
 
