@@ -35,20 +35,25 @@ const posts = postModules
   </section>
 
   <section>
-    <h2 class="section-title">Latest English Posts</h2>
-    <div class="post-grid">
+    <h2 class="section-title">Story Feed</h2>
+    <div class="thread-list">
       {
         posts.map((post) => (
-          <a class="post-card" href={post.url}>
-            <p class="card-date">
-              {post.pubDate.toLocaleDateString("en-US", {
-                year: "numeric",
-                month: "short",
-                day: "numeric"
-              })}
+          <a class="thread-item" href={post.url}>
+            <p class="thread-meta">
+              <span class="card-date">
+                {post.pubDate.toLocaleDateString("en-US", {
+                  year: "numeric",
+                  month: "short",
+                  day: "numeric"
+                })}
+              </span>
+              <span class="thread-dot" aria-hidden="true">•</span>
+              <span>story</span>
             </p>
-            <h3>{post.title}</h3>
-            {post.excerpt && <p>{post.excerpt}</p>}
+            <h3 class="thread-main">{post.title}</h3>
+            {post.excerpt && <p class="thread-snippet">{post.excerpt}</p>}
+            <p class="thread-open">Open story →</p>
           </a>
         ))
       }
