@@ -26,6 +26,10 @@ interface TelegramDocument {
   mime_type?: string;
 }
 
+interface TelegramForwardOrigin {
+  date: number;
+}
+
 interface TelegramMessageEntity {
   type:
     | "bold"
@@ -63,6 +67,8 @@ interface TelegramMessage {
   caption_entities?: TelegramMessageEntity[];
   photo?: TelegramPhotoSize[];
   document?: TelegramDocument;
+  forward_origin?: TelegramForwardOrigin;
+  forward_date?: number;
 }
 
 interface TelegramUpdate {
@@ -88,6 +94,7 @@ interface DraftItem {
   captionPlain?: string;
   fileId?: string;
   sourceDate: number;
+  originalDate: number;
 }
 
 interface DraftState {
@@ -402,7 +409,8 @@ async function publishDraft(
 function extractDraftItem(message: TelegramMessage): DraftItem | null {
   const base = {
     messageId: message.message_id,
-    sourceDate: message.date
+    sourceDate: message.date,
+    originalDate: getOriginalMessageDate(message)
   };
 
   const renderedCaption = renderTelegramFormattedText(message.caption ?? "", message.caption_entities ?? []);
@@ -451,7 +459,11 @@ async function buildPostFromDraft(draft: DraftState, overrideLang?: Lang): Promi
     .join("\n\n");
 
   const lang = overrideLang ?? detectLanguage(textual);
-  const publicationDate = new Date();
+  const firstOriginalDate = sortedItems[0]?.originalDate ?? Math.floor(Date.now() / 1000);
+  const candidatePublicationDate = new Date(firstOriginalDate * 1000);
+  const publicationDate = Number.isNaN(candidatePublicationDate.getTime())
+    ? new Date()
+    : candidatePublicationDate;
   const title = inferTitle(textual, lang, publicationDate);
   const description = inferDescription(textual, lang);
   const slug = await createUniqueSlug(textual, publicationDate, lang);
@@ -796,6 +808,20 @@ function detectLanguage(input: string): Lang {
   }
 
   return "en";
+}
+
+function getOriginalMessageDate(message: TelegramMessage): number {
+  const forwardOriginDate = message.forward_origin?.date;
+  if (typeof forwardOriginDate === "number" && Number.isFinite(forwardOriginDate) && forwardOriginDate > 0) {
+    return forwardOriginDate;
+  }
+
+  const legacyForwardDate = message.forward_date;
+  if (typeof legacyForwardDate === "number" && Number.isFinite(legacyForwardDate) && legacyForwardDate > 0) {
+    return legacyForwardDate;
+  }
+
+  return message.date;
 }
 
 function inferTitle(input: string, lang: Lang, date: Date): string {

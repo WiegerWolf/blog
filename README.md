@@ -83,6 +83,7 @@ Flow:
 Behavior:
 
 - Keeps forwarded message order.
+- Uses original forwarded message date for `pubDate` (first message in thread).
 - Detects language automatically (`en` or `ru`).
 - Infers title, description, and slug.
 - Saves media to `public/images/<slug>/`.
