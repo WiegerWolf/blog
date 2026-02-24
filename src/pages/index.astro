@@ -10,6 +10,7 @@ type BlogPostModule = {
     lang?: "en" | "ru";
     messageCount?: number;
     previewImages?: string[];
+    singleMessageHtml?: string;
   };
   url: string;
 };
@@ -26,7 +27,8 @@ const posts = postModules
     url: post.url,
     lang: post.frontmatter.lang ?? (post.url.startsWith("/ru/") ? "ru" : "en"),
     messageCount: post.frontmatter.messageCount ?? 0,
-    previewImages: (post.frontmatter.previewImages ?? []).slice(0, 4)
+    previewImages: (post.frontmatter.previewImages ?? []).slice(0, 4),
+    singleMessageHtml: (post.frontmatter.singleMessageHtml ?? "").trim()
   }))
   .sort((a, b) => b.pubDate.getTime() - a.pubDate.getTime())
   .slice(0, 6);
@@ -62,8 +64,11 @@ const posts = postModules
     <h2 class="section-title">Latest Thread Feed</h2>
     <div class="thread-list">
       {
-        posts.map((post) => (
-          <a class="thread-item" href={post.url}>
+        posts.map((post) => {
+          const isQuickThread = post.messageCount === 1 && post.previewImages.length === 1;
+
+          return (
+            <a class:list={["thread-item", isQuickThread && "thread-item-quick"]} href={post.url}>
             <p class="thread-meta">
               <span class="card-date">
                 {post.pubDate.toLocaleDateString(post.lang === "ru" ? "ru-RU" : "en-US", {
@@ -73,21 +78,41 @@ const posts = postModules
                 })}
               </span>
               <span class="lang-badge" data-lang={post.lang}>{post.lang === "ru" ? "RU" : "EN"}</span>
-              {post.messageCount > 0 && (
+              {post.messageCount > 1 && (
                 <span class="msg-count">{post.messageCount} {post.lang === "ru" ? "сообщ." : "msgs"}</span>
               )}
             </p>
-            <h3 class="thread-main">{post.title}</h3>
-            {post.previewImages.length > 0 && (
-              <div class="thread-preview" data-count={post.previewImages.length}>
-                {post.previewImages.map((image) => (
-                  <img src={image} alt="" loading="lazy" decoding="async" />
-                ))}
-              </div>
-            )}
-            <p class="thread-open">Open thread →</p>
-          </a>
-        ))
+            {
+              isQuickThread && post.singleMessageHtml
+                ? (
+                    <>
+                      {post.previewImages.length > 0 && (
+                        <div class="thread-preview" data-count={post.previewImages.length}>
+                          {post.previewImages.map((image) => (
+                            <img src={image} alt="" loading="lazy" decoding="async" />
+                          ))}
+                        </div>
+                      )}
+                      <p class="thread-single" set:html={post.singleMessageHtml} />
+                    </>
+                  )
+                : (
+                    <>
+                      <h3 class="thread-main">{post.title}</h3>
+                      {post.previewImages.length > 0 && (
+                        <div class="thread-preview" data-count={post.previewImages.length}>
+                          {post.previewImages.map((image) => (
+                            <img src={image} alt="" loading="lazy" decoding="async" />
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  )
+            }
+            {!isQuickThread && <p class="thread-open">Open thread →</p>}
+            </a>
+          );
+        })
       }
     </div>
   </section>

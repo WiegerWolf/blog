@@ -558,6 +558,15 @@ async function buildPostFromDraft(draft: DraftState, overrideLang?: Lang): Promi
     }
   }
 
+  const singleMessageHtml =
+    sortedItems.length === 1
+      ? normalizeText(sortedItems[0]?.text ?? sortedItems[0]?.caption ?? "")
+      : "";
+
+  if (singleMessageHtml) {
+    appendYamlBlockField(frontmatter, "singleMessageHtml", singleMessageHtml);
+  }
+
   frontmatter.push("---", "");
 
   const markdown = [...frontmatter, bodyBlocks.join("\n\n"), ""].join("\n");
@@ -1088,6 +1097,13 @@ function entityPriority(entity: TelegramMessageEntity): number {
 
 function normalizeLineEndings(input: string): string {
   return input.replace(/\r\n/g, "\n");
+}
+
+function appendYamlBlockField(lines: string[], key: string, value: string) {
+  lines.push(`${key}: |`);
+  for (const rawLine of normalizeLineEndings(value).split("\n")) {
+    lines.push(`  ${rawLine}`);
+  }
 }
 
 function normalizeText(input: string): string {

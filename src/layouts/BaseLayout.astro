@@ -142,5 +142,87 @@ const footerText =
     <footer class="site-shell site-footer">
       <p set:html={footerText} />
     </footer>
+
+    <div class="image-lightbox" data-image-lightbox hidden>
+      <button class="image-lightbox-close" type="button" aria-label="Close image" data-lightbox-close>
+        ×
+      </button>
+      <figure class="image-lightbox-figure" data-lightbox-backdrop="true">
+        <img src="" alt="" data-lightbox-image />
+        <figcaption data-lightbox-caption></figcaption>
+      </figure>
+    </div>
+
+    <script is:inline>
+      (() => {
+        const lightbox = document.querySelector("[data-image-lightbox]");
+        if (!(lightbox instanceof HTMLElement)) {
+          return;
+        }
+
+        const image = lightbox.querySelector("[data-lightbox-image]");
+        const caption = lightbox.querySelector("[data-lightbox-caption]");
+        const closeButton = lightbox.querySelector("[data-lightbox-close]");
+
+        if (!(image instanceof HTMLImageElement) || !(caption instanceof HTMLElement)) {
+          return;
+        }
+
+        const closeLightbox = () => {
+          lightbox.hidden = true;
+          image.removeAttribute("src");
+          image.alt = "";
+          caption.textContent = "";
+          document.body.classList.remove("lightbox-open");
+        };
+
+        const openLightbox = (src, altText) => {
+          image.src = src;
+          image.alt = altText;
+          caption.textContent = altText;
+          lightbox.hidden = false;
+          document.body.classList.add("lightbox-open");
+        };
+
+        closeButton?.addEventListener("click", closeLightbox);
+
+        lightbox.addEventListener("click", (event) => {
+          const target = event.target;
+          if (!(target instanceof HTMLElement)) {
+            return;
+          }
+
+          if (target === lightbox || target.dataset.lightboxBackdrop === "true") {
+            closeLightbox();
+          }
+        });
+
+        document.addEventListener("keydown", (event) => {
+          if (event.key === "Escape" && !lightbox.hidden) {
+            closeLightbox();
+          }
+        });
+
+        document.addEventListener(
+          "click",
+          (event) => {
+            const target = event.target;
+            if (!(target instanceof HTMLImageElement)) {
+              return;
+            }
+
+            if (!target.matches(".post-prose img, .thread-preview img")) {
+              return;
+            }
+
+            event.preventDefault();
+            event.stopPropagation();
+
+            openLightbox(target.currentSrc || target.src, target.alt || "");
+          },
+          true
+        );
+      })();
+    </script>
   </body>
 </html>

@@ -89,6 +89,7 @@ Behavior:
 - Saves media to `public/images/<slug>/`.
 - Writes post file to `src/pages/en/blog/` or `src/pages/ru/blog/`.
 - Adds up to 4 `previewImages` for thread cards.
+- Adds `singleMessageHtml` for one-message threads (used as inline card content).
 - Preserves Telegram formatting (italic, bold, code, links, code blocks).
 
 Supported bot commands:
