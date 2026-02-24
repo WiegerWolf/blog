@@ -264,6 +264,16 @@ a {
   color: var(--text);
 }
 
+.mobile-nav {
+  display: none;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.mobile-nav a:hover {
+  color: var(--text);
+}
+
 .site-main {
   padding: 1.2rem 0 2.8rem;
 }
@@ -602,8 +612,15 @@ h2 {
   }
 
   .nav-links {
-    width: 100%;
-    justify-content: flex-start;
+    display: none;
+  }
+
+  .mobile-nav {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.9rem;
+    padding: 0 0 1.1rem;
   }
 
   .about-grid {
