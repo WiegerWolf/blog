@@ -95,6 +95,18 @@ Supported bot commands:
 - `/publish` - publish draft as PR
 - `/reset` - clear draft buffer
 
+Auto-finalize:
+
+- If `AUTO_FINALIZE_MINUTES` is greater than `0`, draft auto-publishes after inactivity timeout.
+- Retry delay after failures is controlled by `AUTO_FINALIZE_RETRY_MINUTES`.
+
+Startup self-checks:
+
+- Validates Telegram bot token (`getMe`).
+- Validates GitHub repo access + base branch.
+- Checks token permissions where available (`pull` + `push`).
+- Verifies working tree is clean before bot starts.
+
 ### Run bot locally
 
 ```bash
@@ -115,6 +127,8 @@ Optional variables:
 - `BOT_DATA_DIR` (default: `/data`)
 - `POST_BASE_BRANCH` (default: `main`)
 - `POLL_TIMEOUT_SECONDS` (default: `50`)
+- `AUTO_FINALIZE_MINUTES` (default: `0` = disabled)
+- `AUTO_FINALIZE_RETRY_MINUTES` (default: `30`)
 
 ### Run bot on home server (Docker)
 

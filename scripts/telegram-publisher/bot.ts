@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
@@ -64,6 +64,8 @@ interface DraftState {
   items: DraftItem[];
   createdAt: string;
   updatedAt: string;
+  lastPublishAttemptAt?: string;
+  lastPublishError?: string;
 }
 
 interface PublisherState {
@@ -74,10 +76,19 @@ interface PublisherState {
 interface PublishResult {
   postPath: string;
   mediaPaths: string[];
+  imageDirPath: string;
   slug: string;
   lang: Lang;
   title: string;
   description: string;
+}
+
+interface GitHubRepoInfo {
+  full_name: string;
+  permissions?: {
+    pull?: boolean;
+    push?: boolean;
+  };
 }
 
 const config = {
@@ -88,11 +99,25 @@ const config = {
   repoDir: process.env.PUBLISH_REPO_DIR ?? "/repo",
   dataDir: process.env.BOT_DATA_DIR ?? "/data",
   baseBranch: process.env.POST_BASE_BRANCH ?? "main",
-  pollTimeoutSeconds: Number(process.env.POLL_TIMEOUT_SECONDS ?? "50")
+  pollTimeoutSeconds: Number(process.env.POLL_TIMEOUT_SECONDS ?? "50"),
+  autoFinalizeMinutes: Number(process.env.AUTO_FINALIZE_MINUTES ?? "0"),
+  autoFinalizeRetryMinutes: Number(process.env.AUTO_FINALIZE_RETRY_MINUTES ?? "30")
 };
 
 if (!Number.isFinite(config.ownerId)) {
   throw new Error("TELEGRAM_OWNER_ID must be a number");
+}
+
+if (!Number.isFinite(config.pollTimeoutSeconds) || config.pollTimeoutSeconds <= 0) {
+  throw new Error("POLL_TIMEOUT_SECONDS must be a positive number");
+}
+
+if (!Number.isFinite(config.autoFinalizeMinutes) || config.autoFinalizeMinutes < 0) {
+  throw new Error("AUTO_FINALIZE_MINUTES must be a non-negative number");
+}
+
+if (!Number.isFinite(config.autoFinalizeRetryMinutes) || config.autoFinalizeRetryMinutes <= 0) {
+  throw new Error("AUTO_FINALIZE_RETRY_MINUTES must be a positive number");
 }
 
 const stateFilePath = path.join(config.dataDir, "publisher-state.json");
@@ -100,6 +125,7 @@ const stateFilePath = path.join(config.dataDir, "publisher-state.json");
 async function main() {
   await mkdir(config.dataDir, { recursive: true });
   await assertGitRepository(config.repoDir);
+  await runStartupChecks();
   const state = await loadState();
 
   console.log("Telegram publisher bot started");
@@ -111,12 +137,49 @@ async function main() {
         state.lastUpdateId = update.update_id;
         await handleUpdate(update, state);
       }
+      await autoFinalizeDrafts(state);
       await saveState(state);
     } catch (error) {
       console.error("Polling loop error:", error);
       await sleep(2000);
     }
   }
+}
+
+async function runStartupChecks() {
+  console.log("Running startup checks...");
+
+  const botInfo = await telegramRequest<{ id: number; username?: string }>("getMe", {});
+  console.log(`Telegram check passed: ${botInfo.username ? `@${botInfo.username}` : botInfo.id}`);
+
+  await assertCleanWorkingTree();
+  console.log("Git check passed: working tree is clean");
+
+  const repo = await githubRequest<GitHubRepoInfo>(`/repos/${config.githubRepo}`, "GET");
+  if (repo.full_name.toLowerCase() !== config.githubRepo.toLowerCase()) {
+    throw new Error(`GITHUB_REPO mismatch. Expected ${config.githubRepo}, got ${repo.full_name}`);
+  }
+
+  if (repo.permissions) {
+    if (!repo.permissions.pull) {
+      throw new Error("GITHUB_TOKEN is missing pull permission for repository access.");
+    }
+    if (!repo.permissions.push) {
+      throw new Error("GITHUB_TOKEN is missing push permission (Contents: write).");
+    }
+  } else {
+    console.warn("GitHub check warning: repository permissions were not returned by API.");
+  }
+
+  await githubRequest(`/repos/${config.githubRepo}/pulls?state=open&per_page=1`, "GET");
+  await githubRequest(`/repos/${config.githubRepo}/branches/${config.baseBranch}`, "GET");
+
+  console.log("GitHub check passed: repo access and base branch verified");
+  console.log(
+    config.autoFinalizeMinutes > 0
+      ? `Auto-finalize enabled: ${config.autoFinalizeMinutes}m inactivity (retry ${config.autoFinalizeRetryMinutes}m)`
+      : "Auto-finalize disabled"
+  );
 }
 
 async function handleUpdate(update: TelegramUpdate, state: PublisherState) {
@@ -155,6 +218,8 @@ async function handleUpdate(update: TelegramUpdate, state: PublisherState) {
 
   draft.items.push(item);
   draft.updatedAt = new Date().toISOString();
+  draft.lastPublishError = undefined;
+  draft.lastPublishAttemptAt = undefined;
   state.drafts[chatIdKey] = draft;
 
   if (draft.items.length === 1) {
@@ -190,9 +255,10 @@ async function handleCommand(message: TelegramMessage, commandText: string, stat
 
     const textCount = draft.items.filter((item) => item.kind === "text").length;
     const photoCount = draft.items.filter((item) => item.kind === "photo").length;
+    const lastErrorLine = draft.lastPublishError ? `\nLast publish error: ${draft.lastPublishError}` : "";
     await sendMessage(
       chatId,
-      `Draft messages: ${draft.items.length}\nText blocks: ${textCount}\nPhotos: ${photoCount}\nStarted: ${draft.createdAt}`
+      `Draft messages: ${draft.items.length}\nText blocks: ${textCount}\nPhotos: ${photoCount}\nStarted: ${draft.createdAt}${lastErrorLine}`
     );
     return;
   }
@@ -212,30 +278,94 @@ async function handleCommand(message: TelegramMessage, commandText: string, stat
     const overrideLang = args[0] === "ru" || args[0] === "en" ? (args[0] as Lang) : undefined;
 
     await sendMessage(chatId, "Publishing draft... this can take a moment.");
-    try {
-      await assertCleanWorkingTree();
-      const publishResult = await buildPostFromDraft(draft, overrideLang);
-      const pullRequestUrl = await commitAndOpenPr(publishResult);
-      delete state.drafts[chatIdKey];
-
-      await sendMessage(
-        chatId,
-        [
-          `PR created: ${pullRequestUrl}`,
-          `Language: ${publishResult.lang}`,
-          `Slug: ${publishResult.slug}`,
-          `Title: ${publishResult.title}`
-        ].join("\n")
-      );
-    } catch (error) {
-      console.error("Publish failed:", error);
-      const messageText = error instanceof Error ? error.message : "Unknown publish error";
-      await sendMessage(chatId, `Publish failed: ${messageText}`);
-    }
+    await publishDraft(chatId, chatIdKey, draft, state, {
+      overrideLang,
+      mode: "manual"
+    });
     return;
   }
 
   await sendMessage(chatId, "Unknown command. Use /start for help.");
+}
+
+async function autoFinalizeDrafts(state: PublisherState) {
+  if (config.autoFinalizeMinutes <= 0) {
+    return;
+  }
+
+  const now = Date.now();
+  const idleThresholdMs = config.autoFinalizeMinutes * 60_000;
+  const retryThresholdMs = config.autoFinalizeRetryMinutes * 60_000;
+
+  for (const [chatIdKey, draft] of Object.entries(state.drafts)) {
+    if (!draft.items.length) {
+      continue;
+    }
+
+    const lastItem = draft.items[draft.items.length - 1];
+    const idleMs = now - lastItem.sourceDate * 1000;
+    if (idleMs < idleThresholdMs) {
+      continue;
+    }
+
+    const lastAttemptMs = draft.lastPublishAttemptAt ? Date.parse(draft.lastPublishAttemptAt) : 0;
+    if (Number.isFinite(lastAttemptMs) && lastAttemptMs > 0 && now - lastAttemptMs < retryThresholdMs) {
+      continue;
+    }
+
+    const chatId = Number(chatIdKey);
+    if (!Number.isFinite(chatId)) {
+      continue;
+    }
+
+    await sendMessage(
+      chatId,
+      `Auto-finalize triggered after ${config.autoFinalizeMinutes}m inactivity. Publishing draft...`
+    );
+
+    await publishDraft(chatId, chatIdKey, draft, state, {
+      mode: "auto"
+    });
+  }
+}
+
+async function publishDraft(
+  chatId: number,
+  chatIdKey: string,
+  draft: DraftState,
+  state: PublisherState,
+  options: { mode: "manual" | "auto"; overrideLang?: Lang }
+) {
+  let publishResult: PublishResult | null = null;
+  draft.lastPublishAttemptAt = new Date().toISOString();
+
+  try {
+    await assertCleanWorkingTree();
+    publishResult = await buildPostFromDraft(draft, options.overrideLang);
+    const pullRequestUrl = await commitAndOpenPr(publishResult);
+    delete state.drafts[chatIdKey];
+
+    await sendMessage(
+      chatId,
+      [
+        `PR created: ${pullRequestUrl}`,
+        `Language: ${publishResult.lang}`,
+        `Slug: ${publishResult.slug}`,
+        `Title: ${publishResult.title}`,
+        options.mode === "auto" ? "Mode: auto-finalize" : "Mode: manual publish"
+      ].join("\n")
+    );
+  } catch (error) {
+    if (publishResult) {
+      await cleanupGeneratedArtifacts(publishResult);
+    }
+
+    const messageText = error instanceof Error ? error.message : "Unknown publish error";
+    draft.lastPublishError = messageText;
+    state.drafts[chatIdKey] = draft;
+    console.error("Publish failed:", error);
+    await sendMessage(chatId, `Publish failed: ${messageText}`);
+  }
 }
 
 function extractDraftItem(message: TelegramMessage): DraftItem | null {
@@ -342,6 +472,7 @@ async function buildPostFromDraft(draft: DraftState, overrideLang?: Lang): Promi
   return {
     postPath,
     mediaPaths,
+    imageDirPath: imagesDir,
     slug,
     lang,
     title,
@@ -404,7 +535,21 @@ async function commitAndOpenPr(publish: PublishResult): Promise<string> {
     return pullRequest.html_url;
   } finally {
     await runGit(["checkout", config.baseBranch], { cwd: config.repoDir, allowFailure: true });
+    await runGit(["branch", "-D", branch], { cwd: config.repoDir, allowFailure: true });
   }
+}
+
+async function cleanupGeneratedArtifacts(publish: PublishResult) {
+  const relativePaths = [toRepoRelativePath(publish.postPath), ...publish.mediaPaths.map(toRepoRelativePath)];
+  if (relativePaths.length > 0) {
+    await runGit(["restore", "--staged", "--", ...relativePaths], {
+      cwd: config.repoDir,
+      allowFailure: true
+    });
+  }
+
+  await rm(publish.postPath, { force: true });
+  await rm(publish.imageDirPath, { recursive: true, force: true });
 }
 
 async function fetchUpdates(offset: number, timeoutSeconds: number): Promise<TelegramUpdate[]> {
