@@ -8,6 +8,7 @@ type BlogPostModule = {
     description: string;
     pubDate: string | Date;
     messageCount?: number;
+    previewImages?: string[];
   };
   url: string;
 };
@@ -19,7 +20,8 @@ const posts = postModules
     title: getFeedTitle(post.frontmatter.title, post.frontmatter.description),
     pubDate: new Date(post.frontmatter.pubDate),
     url: post.url,
-    messageCount: post.frontmatter.messageCount ?? 0
+    messageCount: post.frontmatter.messageCount ?? 0,
+    previewImages: (post.frontmatter.previewImages ?? []).slice(0, 4)
   }))
   .sort((a, b) => b.pubDate.getTime() - a.pubDate.getTime());
 ---
@@ -50,6 +52,13 @@ const posts = postModules
               )}
             </p>
             <h3 class="thread-main">{post.title}</h3>
+            {post.previewImages.length > 0 && (
+              <div class="thread-preview" data-count={post.previewImages.length}>
+                {post.previewImages.map((image) => (
+                  <img src={image} alt="" loading="lazy" decoding="async" />
+                ))}
+              </div>
+            )}
             <p class="thread-open">Open thread →</p>
           </a>
         ))

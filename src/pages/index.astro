@@ -9,6 +9,7 @@ type BlogPostModule = {
     pubDate: string | Date;
     lang?: "en" | "ru";
     messageCount?: number;
+    previewImages?: string[];
   };
   url: string;
 };
@@ -24,7 +25,8 @@ const posts = postModules
     pubDate: new Date(post.frontmatter.pubDate),
     url: post.url,
     lang: post.frontmatter.lang ?? (post.url.startsWith("/ru/") ? "ru" : "en"),
-    messageCount: post.frontmatter.messageCount ?? 0
+    messageCount: post.frontmatter.messageCount ?? 0,
+    previewImages: (post.frontmatter.previewImages ?? []).slice(0, 4)
   }))
   .sort((a, b) => b.pubDate.getTime() - a.pubDate.getTime())
   .slice(0, 6);
@@ -72,10 +74,17 @@ const posts = postModules
               </span>
               <span class="lang-badge" data-lang={post.lang}>{post.lang === "ru" ? "RU" : "EN"}</span>
               {post.messageCount > 0 && (
-                <span class="msg-count">{post.messageCount} msgs</span>
+                <span class="msg-count">{post.messageCount} {post.lang === "ru" ? "сообщ." : "msgs"}</span>
               )}
             </p>
             <h3 class="thread-main">{post.title}</h3>
+            {post.previewImages.length > 0 && (
+              <div class="thread-preview" data-count={post.previewImages.length}>
+                {post.previewImages.map((image) => (
+                  <img src={image} alt="" loading="lazy" decoding="async" />
+                ))}
+              </div>
+            )}
             <p class="thread-open">Open thread →</p>
           </a>
         ))

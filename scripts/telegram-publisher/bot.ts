@@ -462,6 +462,7 @@ async function buildPostFromDraft(draft: DraftState, overrideLang?: Lang): Promi
 
   const bodyBlocks: string[] = [];
   const mediaPaths: string[] = [];
+  const previewImages: string[] = [];
   let mediaIndex = 0;
 
   for (const item of sortedItems) {
@@ -475,6 +476,9 @@ async function buildPostFromDraft(draft: DraftState, overrideLang?: Lang): Promi
       await mkdir(imagesDir, { recursive: true });
       const saved = await downloadTelegramImage(item.fileId, imagesDir, mediaIndex);
       mediaPaths.push(saved.absolutePath);
+      if (previewImages.length < 4) {
+        previewImages.push(saved.publicPath);
+      }
 
       const altText = inferImageAlt(item.captionPlain, mediaIndex, lang);
       if (item.caption && item.caption.trim()) {
@@ -499,10 +503,17 @@ async function buildPostFromDraft(draft: DraftState, overrideLang?: Lang): Promi
     `description: "${escapeYamlString(description)}"`,
     `pubDate: ${publicationDate.toISOString().slice(0, 10)}`,
     `lang: ${lang}`,
-    `messageCount: ${sortedItems.length}`,
-    "---",
-    ""
+    `messageCount: ${sortedItems.length}`
   ];
+
+  if (previewImages.length > 0) {
+    frontmatter.push("previewImages:");
+    for (const previewImagePath of previewImages) {
+      frontmatter.push(`  - "${escapeYamlString(previewImagePath)}"`);
+    }
+  }
+
+  frontmatter.push("---", "");
 
   const markdown = [...frontmatter, bodyBlocks.join("\n\n"), ""].join("\n");
   const postPath = path.join(blogDir, `${slug}.md`);
