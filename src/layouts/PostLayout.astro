@@ -1,0 +1,45 @@
+---
+import BaseLayout from "./BaseLayout.astro";
+
+interface Frontmatter {
+  title: string;
+  description: string;
+  pubDate: string | Date;
+}
+
+interface Props {
+  frontmatter?: Frontmatter;
+  title?: string;
+  description?: string;
+  pubDate?: string | Date;
+}
+
+const props = Astro.props as Props;
+const data = props.frontmatter ?? props;
+
+const title = data.title ?? "Untitled";
+const description = data.description ?? "";
+const published = data.pubDate ? new Date(data.pubDate) : new Date();
+const safePublished = Number.isNaN(published.getTime()) ? new Date() : published;
+const publishedIso = safePublished.toISOString();
+const publishedLabel = safePublished.toLocaleDateString("en-US", {
+  year: "numeric",
+  month: "short",
+  day: "numeric"
+});
+---
+
+<BaseLayout title={`${title} | Tsatsin Blog`} description={description}>
+  <article class="post-wrap">
+    <header class="post-header">
+      <p class="post-date">
+        <time datetime={publishedIso}>{publishedLabel}</time>
+      </p>
+      <h1>{title}</h1>
+      <p>{description}</p>
+    </header>
+    <div class="post-prose">
+      <slot />
+    </div>
+  </article>
+</BaseLayout>

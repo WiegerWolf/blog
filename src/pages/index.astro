@@ -1,0 +1,60 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+
+type BlogPostModule = {
+  frontmatter: {
+    title: string;
+    description: string;
+    pubDate: string | Date;
+  };
+  url: string;
+};
+
+const postModules = Object.values(
+  import.meta.glob("./blog/*.md", { eager: true })
+) as BlogPostModule[];
+
+const posts = postModules
+  .map((post) => ({
+    title: post.frontmatter.title,
+    description: post.frontmatter.description,
+    pubDate: new Date(post.frontmatter.pubDate),
+    url: post.url
+  }))
+  .sort((a, b) => b.pubDate.getTime() - a.pubDate.getTime());
+---
+
+<BaseLayout
+  title="Tsatsin Blog"
+  description="A simple modern blog about software, product, and useful ideas."
+>
+  <section class="hero">
+    <p class="eyebrow">blog.tsatsin.com</p>
+    <h1>Simple thoughts, shipped often.</h1>
+    <p>
+      A clean space for notes on engineering, product decisions, and practical lessons learned while
+      building things.
+    </p>
+  </section>
+
+  <section>
+    <h2 class="section-title">Latest Posts</h2>
+    <div class="post-grid">
+      {
+        posts.map((post) => (
+          <a class="post-card" href={post.url}>
+            <p class="card-date">
+              {post.pubDate.toLocaleDateString("en-US", {
+                year: "numeric",
+                month: "short",
+                day: "numeric"
+              })}
+            </p>
+            <h3>{post.title}</h3>
+            <p>{post.description}</p>
+          </a>
+        ))
+      }
+    </div>
+  </section>
+</BaseLayout>
