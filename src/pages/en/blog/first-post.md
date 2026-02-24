@@ -1,8 +1,10 @@
 ---
-layout: ../../layouts/PostLayout.astro
+layout: ../../../layouts/PostLayout.astro
 title: "Start Small, Stay Consistent"
 description: "A tiny publishing workflow beats a perfect setup that never ships."
 pubDate: 2026-02-24
+lang: en
+translationKey: start-small-stay-consistent
 ---
 
 This blog now runs on a tiny workflow:

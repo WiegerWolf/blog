@@ -1,0 +1,38 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+---
+
+<BaseLayout
+  lang="ru"
+  title="О блоге | Tsatsin Blog"
+  description="О русскоязычном разделе и формате публикаций."
+>
+  <section class="hero">
+    <p class="eyebrow">О блоге</p>
+    <h1>Заметки из практики</h1>
+    <p>
+      Здесь я делюсь практическими выводами из разработки и запуска продуктов. Формат простой:
+      коротко, по делу и с фокусом на применимость.
+    </p>
+  </section>
+
+  <section class="about-grid" aria-label="О чем этот блог">
+    <article class="about-panel">
+      <h2>О чем пишу</h2>
+      <ul>
+        <li>Архитектурные решения и компромиссы.</li>
+        <li>Простые системы, которые легко поддерживать.</li>
+        <li>Опыт из реальных запусков.</li>
+      </ul>
+    </article>
+
+    <article class="about-panel">
+      <h2>Как пишу</h2>
+      <ul>
+        <li>Одна идея на пост.</li>
+        <li>Больше примеров, меньше абстракций.</li>
+        <li>Четкий язык без лишнего шума.</li>
+      </ul>
+    </article>
+  </section>
+</BaseLayout>

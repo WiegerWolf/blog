@@ -139,9 +139,65 @@ h2 {
   margin-bottom: 0.9rem;
 }
 
+.language-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.language-card {
+  display: block;
+  background: var(--surface-strong);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 1.1rem 1.2rem;
+  box-shadow: var(--shadow);
+  transition: transform 180ms ease;
+}
+
+.language-card:hover {
+  transform: translateY(-3px);
+}
+
+.language-card h2 {
+  margin: 0.35rem 0 0.45rem;
+}
+
+.language-card p {
+  margin: 0;
+  color: var(--muted);
+}
+
 .post-grid {
   display: grid;
   gap: 1rem;
+}
+
+.card-meta {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.lang-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.15rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.lang-badge[data-lang="ru"] {
+  background: #e9e8fb;
+  color: #3f3b86;
 }
 
 .post-card {
@@ -260,6 +316,10 @@ h2 {
   }
 
   .about-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .language-grid {
     grid-template-columns: 1fr;
   }
 }

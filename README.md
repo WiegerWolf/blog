@@ -11,18 +11,37 @@ bun run dev
 
 ## Write a post
 
-Create a new Markdown file in `src/pages/blog/`:
+English posts live in `src/pages/en/blog/`.
 
 ```md
 ---
-layout: ../../layouts/PostLayout.astro
+layout: ../../../layouts/PostLayout.astro
 title: "My Post Title"
 description: "Short summary shown on the homepage and in metadata."
 pubDate: 2026-02-24
+lang: en
+translationKey: my-post-title
 ---
 
 Your content here.
 ```
+
+Russian posts live in `src/pages/ru/blog/`:
+
+```md
+---
+layout: ../../../layouts/PostLayout.astro
+title: "Заголовок поста"
+description: "Короткое описание для карточек и метаданных."
+pubDate: 2026-02-24
+lang: ru
+translationKey: my-post-title
+---
+
+Ваш текст.
+```
+
+`translationKey` links equivalent EN/RU posts.
 
 ## Add images to posts
 
@@ -41,6 +60,14 @@ Optional caption:
   <figcaption>Post release status from Friday deploy.</figcaption>
 </figure>
 ```
+
+## Language routes and feeds
+
+- English: `/en/`
+- Russian: `/ru/`
+- All posts RSS: `/rss.xml`
+- English RSS: `/en/rss.xml`
+- Russian RSS: `/ru/rss.xml`
 
 ## Deploy
 

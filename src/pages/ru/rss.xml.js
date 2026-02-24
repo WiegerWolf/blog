@@ -1,10 +1,7 @@
 import rss from "@astrojs/rss";
 
 export async function GET(context) {
-  const postModules = [
-    ...Object.values(import.meta.glob("./en/blog/*.md", { eager: true })),
-    ...Object.values(import.meta.glob("./ru/blog/*.md", { eager: true }))
-  ];
+  const postModules = Object.values(import.meta.glob("./blog/*.md", { eager: true }));
 
   const posts = postModules
     .map((post) => ({
@@ -16,8 +13,8 @@ export async function GET(context) {
     .sort((a, b) => b.pubDate.getTime() - a.pubDate.getTime());
 
   return rss({
-    title: "Tsatsin Blog (All Languages)",
-    description: "Bilingual notes on engineering and product building in English and Russian.",
+    title: "Tsatsin Blog (RU)",
+    description: "Русскоязычные заметки о разработке и продукте.",
     site: context.site,
     items: posts
   });

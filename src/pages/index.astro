@@ -6,49 +6,70 @@ type BlogPostModule = {
     title: string;
     description: string;
     pubDate: string | Date;
+    lang?: "en" | "ru";
   };
   url: string;
 };
 
-const postModules = Object.values(
-  import.meta.glob("./blog/*.md", { eager: true })
-) as BlogPostModule[];
+const postModules = [
+  ...Object.values(import.meta.glob("./en/blog/*.md", { eager: true })),
+  ...Object.values(import.meta.glob("./ru/blog/*.md", { eager: true }))
+] as BlogPostModule[];
 
 const posts = postModules
   .map((post) => ({
     title: post.frontmatter.title,
     description: post.frontmatter.description,
     pubDate: new Date(post.frontmatter.pubDate),
-    url: post.url
+    url: post.url,
+    lang: post.frontmatter.lang ?? (post.url.startsWith("/ru/") ? "ru" : "en")
   }))
-  .sort((a, b) => b.pubDate.getTime() - a.pubDate.getTime());
+  .sort((a, b) => b.pubDate.getTime() - a.pubDate.getTime())
+  .slice(0, 6);
 ---
 
 <BaseLayout
   title="Tsatsin Blog"
-  description="A simple modern blog about software, product, and useful ideas."
+  description="A bilingual blog about software, product, and practical ideas in English and Russian."
 >
   <section class="hero">
     <p class="eyebrow">blog.tsatsin.com</p>
-    <h1>Simple thoughts, shipped often.</h1>
+    <h1>A bilingual blog: English + Russian</h1>
     <p>
-      A clean space for notes on engineering, product decisions, and practical lessons learned while
-      building things.
+      Pick your language and read practical notes on engineering, product decisions, and lessons
+      from shipping real projects.
     </p>
   </section>
 
+  <section class="language-grid" aria-label="Language sections">
+    <a class="language-card" href="/en/">
+      <p class="eyebrow">English</p>
+      <h2>Read in English</h2>
+      <p>Posts, notes, and walkthroughs in English.</p>
+    </a>
+
+    <a class="language-card" href="/ru/">
+      <p class="eyebrow">Русский</p>
+      <h2>Читать по-русски</h2>
+      <p>Посты и практические заметки на русском языке.</p>
+    </a>
+  </section>
+
   <section>
-    <h2 class="section-title">Latest Posts</h2>
+    <h2 class="section-title">Latest Across Both Languages</h2>
     <div class="post-grid">
       {
         posts.map((post) => (
           <a class="post-card" href={post.url}>
-            <p class="card-date">
-              {post.pubDate.toLocaleDateString("en-US", {
-                year: "numeric",
-                month: "short",
-                day: "numeric"
-              })}
+            <p class="card-meta">
+              <span class="card-date">
+                {post.pubDate.toLocaleDateString(post.lang === "ru" ? "ru-RU" : "en-US", {
+                  year: "numeric",
+                  month: "short",
+                  day: "numeric"
+                })}
+              </span>
+              <span class="lang-badge" data-lang={post.lang}>{post.lang === "ru" ? "RU" : "EN"}</span>
             </p>
             <h3>{post.title}</h3>
             <p>{post.description}</p>

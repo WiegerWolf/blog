@@ -1,0 +1,56 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+
+type BlogPostModule = {
+  frontmatter: {
+    title: string;
+    description: string;
+    pubDate: string | Date;
+  };
+  url: string;
+};
+
+const postModules = Object.values(import.meta.glob("./blog/*.md", { eager: true })) as BlogPostModule[];
+
+const posts = postModules
+  .map((post) => ({
+    title: post.frontmatter.title,
+    description: post.frontmatter.description,
+    pubDate: new Date(post.frontmatter.pubDate),
+    url: post.url
+  }))
+  .sort((a, b) => b.pubDate.getTime() - a.pubDate.getTime());
+---
+
+<BaseLayout
+  lang="ru"
+  title="Посты на русском | Tsatsin Blog"
+  description="Русскоязычные заметки о разработке, продукте и практических решениях."
+>
+  <section class="hero">
+    <p class="eyebrow">Русский</p>
+    <h1>Коротко и по делу.</h1>
+    <p>Практические заметки о разработке, архитектуре и запуске реальных проектов.</p>
+  </section>
+
+  <section>
+    <h2 class="section-title">Последние посты</h2>
+    <div class="post-grid">
+      {
+        posts.map((post) => (
+          <a class="post-card" href={post.url}>
+            <p class="card-date">
+              {post.pubDate.toLocaleDateString("ru-RU", {
+                year: "numeric",
+                month: "short",
+                day: "numeric"
+              })}
+            </p>
+            <h3>{post.title}</h3>
+            <p>{post.description}</p>
+          </a>
+        ))
+      }
+    </div>
+  </section>
+</BaseLayout>

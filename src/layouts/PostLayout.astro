@@ -5,6 +5,8 @@ interface Frontmatter {
   title: string;
   description: string;
   pubDate: string | Date;
+  lang?: "en" | "ru";
+  translationKey?: string;
 }
 
 interface Props {
@@ -12,6 +14,8 @@ interface Props {
   title?: string;
   description?: string;
   pubDate?: string | Date;
+  lang?: "en" | "ru";
+  translationKey?: string;
 }
 
 const props = Astro.props as Props;
@@ -19,17 +23,18 @@ const data = props.frontmatter ?? props;
 
 const title = data.title ?? "Untitled";
 const description = data.description ?? "";
+const lang = data.lang === "ru" ? "ru" : "en";
 const published = data.pubDate ? new Date(data.pubDate) : new Date();
 const safePublished = Number.isNaN(published.getTime()) ? new Date() : published;
 const publishedIso = safePublished.toISOString();
-const publishedLabel = safePublished.toLocaleDateString("en-US", {
+const publishedLabel = safePublished.toLocaleDateString(lang === "ru" ? "ru-RU" : "en-US", {
   year: "numeric",
   month: "short",
   day: "numeric"
 });
 ---
 
-<BaseLayout title={`${title} | Tsatsin Blog`} description={description}>
+<BaseLayout title={`${title} | Tsatsin Blog`} description={description} lang={lang}>
   <article class="post-wrap">
     <header class="post-header">
       <p class="post-date">

@@ -1,8 +1,10 @@
 ---
-layout: ../../layouts/PostLayout.astro
+layout: ../../../layouts/PostLayout.astro
 title: "Modern by Default"
 description: "Good spacing, readable typography, and fast pages make a site feel current."
 pubDate: 2026-02-20
+lang: en
+translationKey: modern-by-default
 ---
 
 Modern design is mostly restraint.
