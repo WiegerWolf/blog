@@ -8,7 +8,8 @@
     "start": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "check": "astro check"
+    "check": "astro check",
+    "tg:bot": "bun run scripts/telegram-publisher/bot.ts"
   },
   "dependencies": {
     "@astrojs/rss": "^4.0.12",

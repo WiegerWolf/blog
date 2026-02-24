@@ -69,6 +69,65 @@ Optional caption:
 - English RSS: `/en/rss.xml`
 - Russian RSS: `/ru/rss.xml`
 
+## Telegram publisher bot (Saved Messages -> PR)
+
+This repo includes a private Telegram bot that turns forwarded story messages into a blog post PR.
+
+Flow:
+
+1. Write in Telegram Saved Messages.
+2. Forward the full story to your bot (text + photos in order).
+3. Send `/publish` to the bot.
+4. Bot creates a branch and opens a PR to `main`.
+
+Behavior:
+
+- Keeps forwarded message order.
+- Detects language automatically (`en` or `ru`).
+- Infers title, description, and slug.
+- Saves media to `public/images/<slug>/`.
+- Writes post file to `src/pages/en/blog/` or `src/pages/ru/blog/`.
+
+Supported bot commands:
+
+- `/start` - usage help
+- `/status` - current draft counts
+- `/publish` - publish draft as PR
+- `/reset` - clear draft buffer
+
+### Run bot locally
+
+```bash
+cp .env.publisher.example .env.publisher
+bun run tg:bot
+```
+
+Required environment variables:
+
+- `TELEGRAM_BOT_TOKEN`
+- `TELEGRAM_OWNER_ID`
+- `GITHUB_TOKEN`
+- `GITHUB_REPO` (example: `WiegerWolf/blog`)
+
+Optional variables:
+
+- `PUBLISH_REPO_DIR` (default: `/repo`)
+- `BOT_DATA_DIR` (default: `/data`)
+- `POST_BASE_BRANCH` (default: `main`)
+- `POLL_TIMEOUT_SECONDS` (default: `50`)
+
+### Run bot on home server (Docker)
+
+```bash
+cp .env.publisher.example .env.publisher
+docker compose -f docker-compose.publisher.yml up -d --build
+```
+
+The compose file mounts:
+
+- repo at `/repo` (for git branch/commit/push)
+- persistent state at `./publisher-data` (draft buffer + update offset)
+
 ## Deploy
 
 1. Push this repository to GitHub.

@@ -1,0 +1,17 @@
+services:
+  telegram-publisher:
+    build:
+      context: .
+      dockerfile: telegram-publisher.Dockerfile
+    container_name: telegram-publisher
+    restart: unless-stopped
+    env_file:
+      - .env.publisher
+    environment:
+      PUBLISH_REPO_DIR: /repo
+      BOT_DATA_DIR: /data
+      POST_BASE_BRANCH: main
+      POLL_TIMEOUT_SECONDS: 50
+    volumes:
+      - ./:/repo
+      - ./publisher-data:/data
