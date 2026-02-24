@@ -32,6 +32,7 @@ const navLinks =
     ? [
         { href: "/ru/", label: "Треды" },
         { href: "/ru/about/", label: "О тредах" },
+        { href: "https://artempodcast.com", label: "Подкаст" },
         { href: "/en/", label: "EN" },
         { href: rssHref, label: "RSS" }
       ]
@@ -39,11 +40,13 @@ const navLinks =
       ? [
           { href: "/en/", label: "Threads" },
           { href: "/en/about/", label: "About" },
+          { href: "https://artempodcast.com", label: "Podcast" },
           { href: "/ru/", label: "RU" },
           { href: rssHref, label: "RSS" }
         ]
       : [
           { href: "/", label: "Threads" },
+          { href: "https://artempodcast.com", label: "Podcast" },
           { href: "/en/", label: "EN" },
           { href: "/ru/", label: "RU" },
           { href: rssHref, label: "RSS" }
@@ -52,10 +55,12 @@ const navLinks =
 const rssTitle =
   section === "ru" ? "Tsatsin RSS (RU)" : section === "en" ? "Tsatsin RSS (EN)" : "Tsatsin RSS";
 
+const isExternalLink = (href: string) => href.startsWith("http://") || href.startsWith("https://");
+
 const footerText =
   lang === "ru"
-    ? `<a href="https://github.com/WiegerWolf/blog" target="_blank" rel="noopener">GitHub</a> • <a href="https://www.youtube.com/@ArtemPlays" target="_blank" rel="noopener">YouTube</a>`
-    : `<a href="https://github.com/WiegerWolf/blog" target="_blank" rel="noopener">GitHub</a> • <a href="https://www.youtube.com/@ArtemPlays" target="_blank" rel="noopener">YouTube</a>`;
+    ? `<a href="https://artempodcast.com" target="_blank" rel="noopener">Podcast</a> • <a href="https://github.com/WiegerWolf/blog" target="_blank" rel="noopener">GitHub</a> • <a href="https://www.youtube.com/@ArtemPlays" target="_blank" rel="noopener">YouTube</a>`
+    : `<a href="https://artempodcast.com" target="_blank" rel="noopener">Podcast</a> • <a href="https://github.com/WiegerWolf/blog" target="_blank" rel="noopener">GitHub</a> • <a href="https://www.youtube.com/@ArtemPlays" target="_blank" rel="noopener">YouTube</a>`;
 ---
 
 <!doctype html>
@@ -104,7 +109,13 @@ const footerText =
       <nav class="nav-links" aria-label="Main navigation">
         {
           navLinks.map((item) => (
-            <a href={item.href}>{item.label}</a>
+            <a
+              href={item.href}
+              target={isExternalLink(item.href) ? "_blank" : undefined}
+              rel={isExternalLink(item.href) ? "noopener" : undefined}
+            >
+              {item.label}
+            </a>
           ))
         }
       </nav>
@@ -117,7 +128,13 @@ const footerText =
     <nav class="site-shell mobile-nav" aria-label="Mobile navigation">
       {
         navLinks.map((item) => (
-          <a href={item.href}>{item.label}</a>
+          <a
+            href={item.href}
+            target={isExternalLink(item.href) ? "_blank" : undefined}
+            rel={isExternalLink(item.href) ? "noopener" : undefined}
+          >
+            {item.label}
+          </a>
         ))
       }
     </nav>
