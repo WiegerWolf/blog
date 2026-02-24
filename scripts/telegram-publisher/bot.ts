@@ -129,6 +129,25 @@ interface GitHubRepoInfo {
   };
 }
 
+interface TelegramBotCommand {
+  command: string;
+  description: string;
+}
+
+const TELEGRAM_COMMANDS_DEFAULT: TelegramBotCommand[] = [
+  { command: "start", description: "Show usage" },
+  { command: "status", description: "Show current draft" },
+  { command: "publish", description: "Publish draft as PR" },
+  { command: "reset", description: "Clear current draft" }
+];
+
+const TELEGRAM_COMMANDS_RU: TelegramBotCommand[] = [
+  { command: "start", description: "Показать помощь" },
+  { command: "status", description: "Показать текущий драфт" },
+  { command: "publish", description: "Опубликовать драфт в PR" },
+  { command: "reset", description: "Очистить текущий драфт" }
+];
+
 const config = {
   telegramToken: requiredEnv("TELEGRAM_BOT_TOKEN"),
   ownerId: Number(requiredEnv("TELEGRAM_OWNER_ID")),
@@ -190,6 +209,9 @@ async function runStartupChecks() {
   const botInfo = await telegramRequest<{ id: number; username?: string }>("getMe", {});
   console.log(`Telegram check passed: ${botInfo.username ? `@${botInfo.username}` : botInfo.id}`);
 
+  await syncTelegramCommands();
+  console.log("Telegram commands synced");
+
   await assertCleanWorkingTree();
   console.log("Git check passed: working tree is clean");
 
@@ -218,6 +240,17 @@ async function runStartupChecks() {
       ? `Auto-finalize enabled: ${config.autoFinalizeMinutes}m inactivity (retry ${config.autoFinalizeRetryMinutes}m)`
       : "Auto-finalize disabled"
   );
+}
+
+async function syncTelegramCommands() {
+  await telegramRequest("setMyCommands", {
+    commands: TELEGRAM_COMMANDS_DEFAULT
+  });
+
+  await telegramRequest("setMyCommands", {
+    language_code: "ru",
+    commands: TELEGRAM_COMMANDS_RU
+  });
 }
 
 async function handleUpdate(update: TelegramUpdate, state: PublisherState) {

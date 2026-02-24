@@ -98,6 +98,8 @@ Supported bot commands:
 - `/publish` - publish draft as PR
 - `/reset` - clear draft buffer
 
+The bot registers these commands in Telegram automatically, so they appear in the command menu.
+
 Auto-finalize:
 
 - If `AUTO_FINALIZE_MINUTES` is greater than `0`, draft auto-publishes after inactivity timeout.
