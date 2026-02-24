@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img" aria-label="Blog publishing flow">
+  <defs>
+    <linearGradient id="card" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" />
+      <stop offset="1" stop-color="#f5fbfb" />
+    </linearGradient>
+    <linearGradient id="line" x1="0" x2="1" y1="0" y2="0">
+      <stop offset="0" stop-color="#0f766e" />
+      <stop offset="1" stop-color="#0ea5e9" />
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="#f6f7fb" />
+  <circle cx="106" cy="90" r="160" fill="#d8f2ec" />
+  <circle cx="1080" cy="530" r="190" fill="#fde8c8" />
+
+  <g font-family="Manrope, Arial, sans-serif" fill="#132026">
+    <rect x="90" y="205" width="300" height="210" rx="20" fill="url(#card)" stroke="#dae3ea" />
+    <text x="130" y="270" font-size="30" font-weight="700">Write Post</text>
+    <text x="130" y="320" font-size="21" fill="#4a5a69">Markdown file in</text>
+    <text x="130" y="352" font-size="21" fill="#4a5a69">src/pages/blog/</text>
+
+    <rect x="450" y="205" width="300" height="210" rx="20" fill="url(#card)" stroke="#dae3ea" />
+    <text x="490" y="270" font-size="30" font-weight="700">Push to Main</text>
+    <text x="490" y="320" font-size="21" fill="#4a5a69">GitHub Actions builds</text>
+    <text x="490" y="352" font-size="21" fill="#4a5a69">on every push</text>
+
+    <rect x="810" y="205" width="300" height="210" rx="20" fill="url(#card)" stroke="#dae3ea" />
+    <text x="850" y="270" font-size="30" font-weight="700">Live Site</text>
+    <text x="850" y="320" font-size="21" fill="#4a5a69">Published to</text>
+    <text x="850" y="352" font-size="21" fill="#4a5a69">blog.tsatsin.com</text>
+
+    <text x="90" y="120" font-size="58" font-weight="700">Simple publishing flow</text>
+  </g>
+
+  <line x1="390" y1="310" x2="450" y2="310" stroke="url(#line)" stroke-width="8" stroke-linecap="round" />
+  <polygon points="448,294 478,310 448,326" fill="#0f766e" />
+
+  <line x1="750" y1="310" x2="810" y2="310" stroke="url(#line)" stroke-width="8" stroke-linecap="round" />
+  <polygon points="808,294 838,310 808,326" fill="#0f766e" />
+</svg>

@@ -8,18 +8,30 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 >
   <section class="hero">
     <p class="eyebrow">About</p>
-    <h1>Why this blog exists</h1>
+    <h1>Notes from shipping</h1>
     <p>
-      This site is intentionally small: short posts, clear writing, and practical ideas. No noise,
-      just useful notes.
+      I use this blog to share practical lessons from building software and launching projects.
+      Everything here is written to be useful in under five minutes.
     </p>
   </section>
 
-  <section class="about-panel">
-    <h2>What to expect</h2>
-    <p>
-      You will find writeups on engineering trade-offs, architecture choices, and lessons from
-      shipping real products.
-    </p>
+  <section class="about-grid" aria-label="What this blog covers">
+    <article class="about-panel">
+      <h2>What I write about</h2>
+      <ul>
+        <li>Architecture choices and trade-offs.</li>
+        <li>Simple systems that are easy to maintain.</li>
+        <li>Shipping notes from real projects.</li>
+      </ul>
+    </article>
+
+    <article class="about-panel">
+      <h2>How I write</h2>
+      <ul>
+        <li>One idea per post.</li>
+        <li>Examples over theory.</li>
+        <li>Clear language, no fluff.</li>
+      </ul>
+    </article>
   </section>
 </BaseLayout>

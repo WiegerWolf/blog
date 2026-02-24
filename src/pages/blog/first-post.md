@@ -5,14 +5,21 @@ description: "A tiny publishing workflow beats a perfect setup that never ships.
 pubDate: 2026-02-24
 ---
 
-Most blogs die before post two.
+This blog now runs on a tiny workflow:
 
-The usual reason is not writing quality. It is setup complexity.
+1. write in Markdown
+2. push to `main`
+3. deploy automatically on GitHub Pages
 
-A useful default is simple:
+<figure>
+  <img src="/images/blog-publishing-flow.svg" alt="Publishing flow from writing a post to live website" />
+  <figcaption>Small system, low friction, easy to keep alive.</figcaption>
+</figure>
 
-- keep posts as Markdown files
-- publish from one branch
-- write short and often
+I went this route because it keeps publishing fast and predictable:
 
-You can always add structure later. Momentum is harder to build than features.
+- no CMS lock-in
+- no server to maintain
+- no hidden moving parts
+
+The main rule for this site is simple: publish useful ideas before polishing everything.

@@ -24,6 +24,24 @@ pubDate: 2026-02-24
 Your content here.
 ```
 
+## Add images to posts
+
+1. Put image files in `public/images/`.
+2. Reference them from Markdown with an absolute path.
+
+```md
+![Screenshot of release dashboard](/images/release-dashboard.webp)
+```
+
+Optional caption:
+
+```html
+<figure>
+  <img src="/images/release-dashboard.webp" alt="Screenshot of release dashboard" />
+  <figcaption>Post release status from Friday deploy.</figcaption>
+</figure>
+```
+
 ## Deploy
 
 1. Push this repository to GitHub.
