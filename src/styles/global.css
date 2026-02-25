@@ -436,22 +436,56 @@ h2 {
   margin: 0.62rem 0 0;
   color: var(--text);
   line-height: 1.58;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .thread-single strong,
-.thread-single em,
-.thread-single code,
-.thread-single a {
+.thread-single em {
   color: inherit;
+}
+
+.thread-single a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .thread-single code {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
   font-size: 0.9em;
+  background: rgba(25, 32, 43, 0.07);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0.08em 0.34em;
 }
 
 .thread-single pre {
-  margin: 0.4rem 0 0;
+  margin: 0.55rem 0 0;
+  padding: 0.65rem 0.78rem;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(25, 32, 43, 0.04);
+  white-space: pre;
+}
+
+.thread-single pre code {
+  border: 0;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.thread-single .tg-spoiler {
+  color: transparent;
+  background: rgba(25, 32, 43, 0.2);
+  border-radius: 4px;
+  padding: 0 0.2em;
+}
+
+.thread-single .tg-spoiler:hover {
+  color: inherit;
 }
 
 .thread-preview {
@@ -859,7 +893,19 @@ h2 {
     background: rgba(0, 0, 0, 0.26);
   }
 
+  .thread-single code {
+    background: rgba(232, 237, 245, 0.14);
+  }
+
+  .thread-single pre {
+    background: rgba(0, 0, 0, 0.26);
+  }
+
   .post-prose .tg-spoiler {
+    background: rgba(232, 237, 245, 0.22);
+  }
+
+  .thread-single .tg-spoiler {
     background: rgba(232, 237, 245, 0.22);
   }
 
