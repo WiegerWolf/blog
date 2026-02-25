@@ -7,6 +7,7 @@ import { promisify } from "node:util";
 const execFileAsync = promisify(execFile);
 
 type Lang = "en" | "ru";
+type GitHubMergeMethod = "merge" | "squash" | "rebase";
 
 interface TelegramUser {
   id: number;
@@ -137,6 +138,47 @@ interface GitHubRepoInfo {
   };
 }
 
+interface CreatedPullRequest {
+  number: number;
+  html_url: string;
+  head: {
+    ref: string;
+    sha: string;
+  };
+  state?: string;
+}
+
+interface GitHubPullDetails {
+  number: number;
+  html_url: string;
+  state: string;
+  draft: boolean;
+  mergeable: boolean | null;
+  mergeable_state?: string;
+  head: {
+    ref: string;
+    sha: string;
+  };
+}
+
+interface GitHubCombinedStatus {
+  state: string;
+}
+
+interface GitHubCheckRunsResponse {
+  total_count: number;
+  check_runs: Array<{
+    name: string;
+    status: string;
+    conclusion: string | null;
+  }>;
+}
+
+interface AutoMergeResult {
+  merged: boolean;
+  reason: string;
+}
+
 interface TelegramBotCommand {
   command: string;
   description: string;
@@ -168,7 +210,11 @@ const config = {
   baseBranch: process.env.POST_BASE_BRANCH ?? "main",
   pollTimeoutSeconds: Number(process.env.POLL_TIMEOUT_SECONDS ?? "50"),
   autoFinalizeMinutes: Number(process.env.AUTO_FINALIZE_MINUTES ?? "0"),
-  autoFinalizeRetryMinutes: Number(process.env.AUTO_FINALIZE_RETRY_MINUTES ?? "30")
+  autoFinalizeRetryMinutes: Number(process.env.AUTO_FINALIZE_RETRY_MINUTES ?? "30"),
+  autoMergeBotPrs: parseBooleanEnv(process.env.AUTO_MERGE_BOT_PRS, true),
+  autoMergeWaitSeconds: Number(process.env.AUTO_MERGE_WAIT_SECONDS ?? "300"),
+  autoMergePollSeconds: Number(process.env.AUTO_MERGE_POLL_SECONDS ?? "5"),
+  autoMergeMethod: (process.env.AUTO_MERGE_METHOD ?? "squash").toLowerCase() as GitHubMergeMethod
 };
 
 if (!Number.isFinite(config.ownerId)) {
@@ -185,6 +231,18 @@ if (!Number.isFinite(config.autoFinalizeMinutes) || config.autoFinalizeMinutes <
 
 if (!Number.isFinite(config.autoFinalizeRetryMinutes) || config.autoFinalizeRetryMinutes <= 0) {
   throw new Error("AUTO_FINALIZE_RETRY_MINUTES must be a positive number");
+}
+
+if (!Number.isFinite(config.autoMergeWaitSeconds) || config.autoMergeWaitSeconds <= 0) {
+  throw new Error("AUTO_MERGE_WAIT_SECONDS must be a positive number");
+}
+
+if (!Number.isFinite(config.autoMergePollSeconds) || config.autoMergePollSeconds <= 0) {
+  throw new Error("AUTO_MERGE_POLL_SECONDS must be a positive number");
+}
+
+if (!(["merge", "squash", "rebase"] as GitHubMergeMethod[]).includes(config.autoMergeMethod)) {
+  throw new Error("AUTO_MERGE_METHOD must be one of: merge, squash, rebase");
 }
 
 const stateFilePath = path.join(config.dataDir, "publisher-state.json");
@@ -249,6 +307,11 @@ async function runStartupChecks() {
     config.autoFinalizeMinutes > 0
       ? `Auto-finalize enabled: ${config.autoFinalizeMinutes}m inactivity (retry ${config.autoFinalizeRetryMinutes}m)`
       : "Auto-finalize disabled"
+  );
+  console.log(
+    config.autoMergeBotPrs
+      ? `Auto-merge enabled: method=${config.autoMergeMethod}, wait=${config.autoMergeWaitSeconds}s`
+      : "Auto-merge disabled"
   );
 }
 
@@ -528,16 +591,37 @@ async function publishDraft(
   try {
     await assertCleanWorkingTree();
     publishResult = await buildPostFromDraft(draft, options.overrideLang, options.publicationDateOverride);
-    const pullRequestUrl = await commitAndOpenPr(publishResult);
+    const pullRequest = await commitAndOpenPr(publishResult);
+    let autoMergeResult: AutoMergeResult | null = null;
+
+    if (config.autoMergeBotPrs) {
+      try {
+        autoMergeResult = await attemptAutoMergeForBotPr(pullRequest);
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : "unknown auto-merge error";
+        autoMergeResult = {
+          merged: false,
+          reason
+        };
+      }
+    }
+
     delete state.drafts[chatIdKey];
+
+    const autoMergeLine = autoMergeResult
+      ? autoMergeResult.merged
+        ? `Auto-merge: merged (${config.autoMergeMethod})`
+        : `Auto-merge: skipped (${autoMergeResult.reason})`
+      : "Auto-merge: disabled";
 
     await sendMessage(
       chatId,
       [
-        `PR created: ${pullRequestUrl}`,
+        `PR created: ${pullRequest.html_url}`,
         `Language: ${publishResult.lang}`,
         `Slug: ${publishResult.slug}`,
         `Title: ${publishResult.title}`,
+        autoMergeLine,
         options.mode === "auto" ? "Mode: auto-finalize" : "Mode: manual publish"
       ].join("\n")
     );
@@ -724,7 +808,7 @@ async function buildPostFromDraft(
   };
 }
 
-async function commitAndOpenPr(publish: PublishResult): Promise<string> {
+async function commitAndOpenPr(publish: PublishResult): Promise<CreatedPullRequest> {
   const branch = `bot/${publish.lang}-${publish.slug}-${Date.now()}`;
   const postRelative = toRepoRelativePath(publish.postPath);
   const mediaRelative = publish.mediaPaths.map(toRepoRelativePath);
@@ -760,7 +844,7 @@ async function commitAndOpenPr(publish: PublishResult): Promise<string> {
       redactToken: config.githubToken
     });
 
-    const pullRequest = await githubRequest<{ html_url: string }>(
+    const pullRequest = await githubRequest<CreatedPullRequest>(
       `/repos/${config.githubRepo}/pulls`,
       "POST",
       {
@@ -776,10 +860,216 @@ async function commitAndOpenPr(publish: PublishResult): Promise<string> {
       }
     );
 
-    return pullRequest.html_url;
+    return pullRequest;
   } finally {
     await runGit(["checkout", config.baseBranch], { cwd: config.repoDir, allowFailure: true });
     await runGit(["branch", "-D", branch], { cwd: config.repoDir, allowFailure: true });
+  }
+}
+
+async function attemptAutoMergeForBotPr(pullRequest: CreatedPullRequest): Promise<AutoMergeResult> {
+  if (!pullRequest.head.ref.startsWith("bot/")) {
+    return {
+      merged: false,
+      reason: "not a bot branch"
+    };
+  }
+
+  const deadlineAt = Date.now() + config.autoMergeWaitSeconds * 1000;
+
+  while (true) {
+    const pull = await githubRequest<GitHubPullDetails>(
+      `/repos/${config.githubRepo}/pulls/${pullRequest.number}`,
+      "GET"
+    );
+
+    if (pull.state !== "open") {
+      return {
+        merged: false,
+        reason: `PR is ${pull.state}`
+      };
+    }
+
+    if (pull.head.ref !== pullRequest.head.ref) {
+      return {
+        merged: false,
+        reason: "PR head ref changed"
+      };
+    }
+
+    if (pull.draft) {
+      return {
+        merged: false,
+        reason: "PR is draft"
+      };
+    }
+
+    const mergeability = evaluateMergeability(pull);
+    if (mergeability.state === "blocked") {
+      return {
+        merged: false,
+        reason: mergeability.reason
+      };
+    }
+
+    const checks = await evaluatePullChecks(pull.head.sha);
+    if (checks.state === "failed") {
+      return {
+        merged: false,
+        reason: checks.reason
+      };
+    }
+
+    if (mergeability.state === "ready" && checks.state === "ready") {
+      return mergePullRequest(pull.number, pull.head.sha);
+    }
+
+    if (Date.now() >= deadlineAt) {
+      return {
+        merged: false,
+        reason: "timed out waiting for checks"
+      };
+    }
+
+    await sleep(config.autoMergePollSeconds * 1000);
+  }
+}
+
+function evaluateMergeability(
+  pull: GitHubPullDetails
+): { state: "ready" | "pending" | "blocked"; reason: string } {
+  const mergeableState = (pull.mergeable_state ?? "unknown").toLowerCase();
+
+  if (pull.mergeable === null || mergeableState === "unknown") {
+    return {
+      state: "pending",
+      reason: "mergeability pending"
+    };
+  }
+
+  if (pull.mergeable === false) {
+    if (mergeableState === "dirty") {
+      return {
+        state: "blocked",
+        reason: "merge conflict"
+      };
+    }
+
+    return {
+      state: "blocked",
+      reason: `merge blocked (${mergeableState})`
+    };
+  }
+
+  if (mergeableState === "behind") {
+    return {
+      state: "blocked",
+      reason: "branch behind base"
+    };
+  }
+
+  return {
+    state: "ready",
+    reason: "ready"
+  };
+}
+
+async function evaluatePullChecks(
+  commitSha: string
+): Promise<{ state: "ready" | "pending" | "failed"; reason: string }> {
+  const combinedStatus = await githubRequest<GitHubCombinedStatus>(
+    `/repos/${config.githubRepo}/commits/${commitSha}/status`,
+    "GET"
+  );
+
+  const commitStatusState = combinedStatus.state.toLowerCase();
+  if (commitStatusState === "failure" || commitStatusState === "error") {
+    return {
+      state: "failed",
+      reason: "commit status is failing"
+    };
+  }
+
+  if (commitStatusState === "pending") {
+    return {
+      state: "pending",
+      reason: "commit status pending"
+    };
+  }
+
+  let checkRunsResponse: GitHubCheckRunsResponse;
+  try {
+    checkRunsResponse = await githubRequest<GitHubCheckRunsResponse>(
+      `/repos/${config.githubRepo}/commits/${commitSha}/check-runs`,
+      "GET"
+    );
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : "unable to read check-runs";
+    return {
+      state: "pending",
+      reason
+    };
+  }
+
+  for (const checkRun of checkRunsResponse.check_runs) {
+    const status = checkRun.status.toLowerCase();
+    const conclusion = (checkRun.conclusion ?? "").toLowerCase();
+
+    if (status !== "completed") {
+      return {
+        state: "pending",
+        reason: `check pending (${checkRun.name})`
+      };
+    }
+
+    if (
+      conclusion === "failure" ||
+      conclusion === "cancelled" ||
+      conclusion === "timed_out" ||
+      conclusion === "action_required" ||
+      conclusion === "stale" ||
+      conclusion === "startup_failure"
+    ) {
+      return {
+        state: "failed",
+        reason: `check failed (${checkRun.name})`
+      };
+    }
+  }
+
+  return {
+    state: "ready",
+    reason: "checks green"
+  };
+}
+
+async function mergePullRequest(prNumber: number, expectedHeadSha: string): Promise<AutoMergeResult> {
+  try {
+    const mergeResponse = await githubRequest<{ merged: boolean; message?: string }>(
+      `/repos/${config.githubRepo}/pulls/${prNumber}/merge`,
+      "PUT",
+      {
+        merge_method: config.autoMergeMethod,
+        sha: expectedHeadSha
+      }
+    );
+
+    if (!mergeResponse.merged) {
+      return {
+        merged: false,
+        reason: mergeResponse.message ?? "merge not completed"
+      };
+    }
+
+    return {
+      merged: true,
+      reason: "merged"
+    };
+  } catch (error) {
+    return {
+      merged: false,
+      reason: error instanceof Error ? error.message : "merge API request failed"
+    };
   }
 }
 
@@ -857,7 +1147,7 @@ async function telegramRequest<T>(method: string, payload: Record<string, unknow
   return data.result;
 }
 
-async function githubRequest<T>(endpoint: string, method: "POST" | "GET", body?: unknown): Promise<T> {
+async function githubRequest<T>(endpoint: string, method: "POST" | "GET" | "PUT", body?: unknown): Promise<T> {
   const response = await fetch(`https://api.github.com${endpoint}`, {
     method,
     headers: {
@@ -1449,6 +1739,23 @@ function requiredEnv(name: string): string {
     throw new Error(`Missing environment variable: ${name}`);
   }
   return value;
+}
+
+function parseBooleanEnv(input: string | undefined, defaultValue: boolean): boolean {
+  if (input == null) {
+    return defaultValue;
+  }
+
+  const value = input.trim().toLowerCase();
+  if (["1", "true", "yes", "on"].includes(value)) {
+    return true;
+  }
+
+  if (["0", "false", "no", "off"].includes(value)) {
+    return false;
+  }
+
+  return defaultValue;
 }
 
 function sleep(ms: number) {

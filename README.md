@@ -93,6 +93,7 @@ Behavior:
 - Adds `singleMessageHtml` for one-message threads (used as inline card content).
 - Preserves Telegram formatting (italic, bold, code, links, code blocks).
 - Auto-embeds YouTube links from text messages.
+- Auto-merges bot-opened PRs when mergeable and checks are green.
 
 Supported bot commands:
 
@@ -138,6 +139,10 @@ Optional variables:
 - `POLL_TIMEOUT_SECONDS` (default: `50`)
 - `AUTO_FINALIZE_MINUTES` (default: `0` = disabled)
 - `AUTO_FINALIZE_RETRY_MINUTES` (default: `30`)
+- `AUTO_MERGE_BOT_PRS` (default: `true`)
+- `AUTO_MERGE_WAIT_SECONDS` (default: `300`)
+- `AUTO_MERGE_POLL_SECONDS` (default: `5`)
+- `AUTO_MERGE_METHOD` (default: `squash`, options: `merge`, `squash`, `rebase`)
 
 ### Run bot on home server (Docker)
 
