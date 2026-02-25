@@ -25,6 +25,8 @@ interface TelegramPhotoSize {
 interface TelegramDocument {
   file_id: string;
   mime_type?: string;
+  file_name?: string;
+  file_size?: number;
 }
 
 interface TelegramVideo {
@@ -96,13 +98,15 @@ interface TelegramFile {
 
 interface DraftItem {
   messageId: number;
-  kind: "text" | "photo" | "video";
+  kind: "text" | "photo" | "video" | "document";
   text?: string;
   textPlain?: string;
   caption?: string;
   captionPlain?: string;
   fileId?: string;
   mimeType?: string;
+  fileName?: string;
+  fileSize?: number;
   sourceDate: number;
   originalDate: number;
   originalDateSource: "forward" | "received";
@@ -133,6 +137,7 @@ interface PublishResult {
   mediaPaths: string[];
   imageDirPath: string;
   videoDirPath?: string;
+  fileDirPath?: string;
   slug: string;
   lang: Lang;
   title: string;
@@ -455,6 +460,7 @@ async function handleCommand(message: TelegramMessage, commandText: string, stat
     const textCount = draft.items.filter((item) => item.kind === "text").length;
     const photoCount = draft.items.filter((item) => item.kind === "photo").length;
     const videoCount = draft.items.filter((item) => item.kind === "video").length;
+    const documentCount = draft.items.filter((item) => item.kind === "document").length;
     const detectedDate = draft.items.length > 0 ? getDetectedPublishDate(draft) : null;
     const pendingLine = draft.pendingPublish
       ? `\nPending publish date choice: yes (default ${draft.pendingPublish.detectedDate})`
@@ -465,7 +471,7 @@ async function handleCommand(message: TelegramMessage, commandText: string, stat
     const lastErrorLine = draft.lastPublishError ? `\nLast publish error: ${draft.lastPublishError}` : "";
     await sendMessage(
       chatId,
-      `Draft messages: ${draft.items.length}\nText blocks: ${textCount}\nPhotos: ${photoCount}\nVideos: ${videoCount}\nStarted: ${draft.createdAt}${detectedLine}${pendingLine}${lastErrorLine}`
+      `Draft messages: ${draft.items.length}\nText blocks: ${textCount}\nPhotos: ${photoCount}\nVideos: ${videoCount}\nFiles: ${documentCount}\nStarted: ${draft.createdAt}${detectedLine}${pendingLine}${lastErrorLine}`
     );
     return;
   }
@@ -731,6 +737,19 @@ function extractDraftItem(message: TelegramMessage): DraftItem | null {
     };
   }
 
+  if (message.document) {
+    return {
+      ...base,
+      kind: "document",
+      fileId: message.document.file_id,
+      mimeType: message.document.mime_type,
+      fileName: message.document.file_name,
+      fileSize: message.document.file_size,
+      caption: renderedCaption || undefined,
+      captionPlain: plainCaption
+    };
+  }
+
   const renderedText = renderTelegramFormattedText(message.text ?? "", message.entities ?? []);
   const plainText = normalizeText(message.text ?? "");
   if (renderedText) {
@@ -770,6 +789,7 @@ async function buildPostFromDraft(
   const blogDir = path.join(config.repoDir, "src", "pages", lang, "blog");
   const imagesDir = path.join(config.repoDir, "public", "images", slug);
   const videosDir = path.join(config.repoDir, "public", "videos", slug);
+  const filesDir = path.join(config.repoDir, "public", "files", slug);
   await mkdir(blogDir, { recursive: true });
 
   const bodyBlocks: string[] = [];
@@ -779,6 +799,7 @@ async function buildPostFromDraft(
   const previewYoutubeVideoIds: string[] = [];
   let imageIndex = 0;
   let videoIndex = 0;
+  let fileIndex = 0;
 
   for (const item of sortedItems) {
     if (item.kind === "text" && item.text) {
@@ -853,6 +874,43 @@ async function buildPostFromDraft(
 
       videoBlock.push("</figure>");
       bodyBlocks.push(videoBlock.join("\n"));
+      continue;
+    }
+
+    if (item.kind === "document" && item.fileId) {
+      fileIndex += 1;
+      await mkdir(filesDir, { recursive: true });
+
+      let attachmentBlock = "";
+
+      try {
+        const saved = await downloadTelegramFile(item.fileId, filesDir, fileIndex, "files", item.mimeType, item.fileName);
+        mediaPaths.push(saved.absolutePath);
+        attachmentBlock = renderAttachmentBlock({
+          href: saved.publicPath,
+          displayName: item.fileName,
+          fallbackIndex: fileIndex,
+          mimeType: item.mimeType,
+          fileSize: item.fileSize,
+          captionHtml: item.caption
+        });
+      } catch (error) {
+        const reason =
+          error instanceof Error
+            ? truncate(error.message.replace(/^Telegram API\s+/i, "").replace(/^Failed to download Telegram media:\s*/i, ""), 180)
+            : "unknown error";
+
+        attachmentBlock = renderAttachmentUnavailableBlock({
+          displayName: item.fileName,
+          fallbackIndex: fileIndex,
+          mimeType: item.mimeType,
+          fileSize: item.fileSize,
+          captionHtml: item.caption,
+          reason
+        });
+      }
+
+      bodyBlocks.push(attachmentBlock);
     }
   }
 
@@ -907,6 +965,7 @@ async function buildPostFromDraft(
     mediaPaths,
     imageDirPath: imagesDir,
     videoDirPath: videosDir,
+    fileDirPath: filesDir,
     slug,
     lang,
     title,
@@ -1219,6 +1278,9 @@ async function cleanupGeneratedArtifacts(publish: PublishResult) {
   if (publish.videoDirPath) {
     await rm(publish.videoDirPath, { recursive: true, force: true });
   }
+  if (publish.fileDirPath) {
+    await rm(publish.fileDirPath, { recursive: true, force: true });
+  }
 }
 
 async function fetchUpdates(offset: number, timeoutSeconds: number): Promise<TelegramUpdate[]> {
@@ -1241,15 +1303,16 @@ async function downloadTelegramFile(
   fileId: string,
   targetDir: string,
   index: number,
-  publicBaseDir: "images" | "videos",
-  mimeType?: string
+  publicBaseDir: "images" | "videos" | "files",
+  mimeType?: string,
+  preferredFileName?: string
 ) {
   const telegramFile = await telegramRequest<TelegramFile>("getFile", {
     file_id: fileId
   });
 
-  const ext = normalizeMediaExtension(path.extname(telegramFile.file_path), mimeType, publicBaseDir);
-  const filename = `${String(index).padStart(3, "0")}${ext.toLowerCase()}`;
+  const ext = normalizeDownloadExtension(path.extname(telegramFile.file_path), mimeType, publicBaseDir);
+  const filename = buildDownloadFilename(index, preferredFileName, ext, publicBaseDir);
   const absolutePath = path.join(targetDir, filename);
 
   const fileUrl = `https://api.telegram.org/file/bot${config.telegramToken}/${telegramFile.file_path}`;
@@ -1267,10 +1330,10 @@ async function downloadTelegramFile(
   };
 }
 
-function normalizeMediaExtension(
+function normalizeDownloadExtension(
   currentExtension: string,
   mimeType: string | undefined,
-  publicBaseDir: "images" | "videos"
+  publicBaseDir: "images" | "videos" | "files"
 ): string {
   if (currentExtension) {
     return currentExtension;
@@ -1286,9 +1349,57 @@ function normalizeMediaExtension(
     if (lower === "video/webm") return ".webm";
     if (lower === "video/quicktime") return ".mov";
     if (lower === "video/x-matroska") return ".mkv";
+    if (lower === "application/pdf") return ".pdf";
+    if (lower === "application/zip") return ".zip";
+    if (lower === "application/x-zip-compressed") return ".zip";
+    if (lower === "application/x-7z-compressed") return ".7z";
+    if (lower === "application/x-rar-compressed") return ".rar";
+    if (lower === "text/plain") return ".txt";
   }
 
-  return publicBaseDir === "videos" ? ".mp4" : ".jpg";
+  if (publicBaseDir === "videos") {
+    return ".mp4";
+  }
+
+  if (publicBaseDir === "images") {
+    return ".jpg";
+  }
+
+  return ".bin";
+}
+
+function buildDownloadFilename(
+  index: number,
+  preferredFileName: string | undefined,
+  extension: string,
+  publicBaseDir: "images" | "videos" | "files"
+): string {
+  const indexPrefix = String(index).padStart(3, "0");
+  const normalizedExtension = extension.toLowerCase();
+
+  if (publicBaseDir !== "files") {
+    return `${indexPrefix}${normalizedExtension}`;
+  }
+
+  const stem = sanitizeFileStem(preferredFileName ?? "");
+  if (!stem) {
+    return `${indexPrefix}${normalizedExtension}`;
+  }
+
+  const preferredExtension = path.extname(preferredFileName ?? "").toLowerCase();
+  const finalExtension = preferredExtension || normalizedExtension;
+  return `${indexPrefix}-${stem}${finalExtension}`;
+}
+
+function sanitizeFileStem(input: string): string {
+  const withoutExt = input.replace(/\.[^/.\\]+$/, "");
+  const sanitized = withoutExt
+    .replace(/[^a-zA-Z0-9._-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^[._-]+|[._-]+$/g, "")
+    .slice(0, 80);
+
+  return sanitized;
 }
 
 async function telegramRequest<T>(method: string, payload: Record<string, unknown>): Promise<T> {
@@ -1880,6 +1991,98 @@ function renderYouTubeEmbed(videoId: string): string {
     `  <iframe src="https://www.youtube-nocookie.com/embed/${videoId}" title="YouTube video" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>`,
     "</div>"
   ].join("\n");
+}
+
+interface AttachmentRenderInput {
+  href: string;
+  displayName?: string;
+  fallbackIndex: number;
+  mimeType?: string;
+  fileSize?: number;
+  captionHtml?: string;
+}
+
+interface AttachmentUnavailableInput {
+  displayName?: string;
+  fallbackIndex: number;
+  mimeType?: string;
+  fileSize?: number;
+  captionHtml?: string;
+  reason: string;
+}
+
+function renderAttachmentBlock(input: AttachmentRenderInput): string {
+  const label = formatAttachmentLabel(input.displayName, input.fallbackIndex);
+  const meta = formatAttachmentMeta(input.mimeType, input.fileSize);
+  const details = meta ? ` (${escapeHtmlText(meta)})` : "";
+
+  const block = [
+    '<div class="thread-file">',
+    `  <p><a href="${escapeHtmlAttr(input.href)}" target="_blank" rel="noopener noreferrer">Attachment: ${escapeHtmlText(label)}</a>${details}</p>`
+  ];
+
+  if (input.captionHtml && input.captionHtml.trim()) {
+    block.push(`  <div>${input.captionHtml}</div>`);
+  }
+
+  block.push("</div>");
+  return block.join("\n");
+}
+
+function renderAttachmentUnavailableBlock(input: AttachmentUnavailableInput): string {
+  const label = formatAttachmentLabel(input.displayName, input.fallbackIndex);
+  const meta = formatAttachmentMeta(input.mimeType, input.fileSize);
+  const details = meta ? ` (${escapeHtmlText(meta)})` : "";
+
+  const block = [
+    '<div class="thread-file">',
+    `  <p>Attachment unavailable: ${escapeHtmlText(label)}${details}. ${escapeHtmlText(input.reason)}</p>`
+  ];
+
+  if (input.captionHtml && input.captionHtml.trim()) {
+    block.push(`  <div>${input.captionHtml}</div>`);
+  }
+
+  block.push("</div>");
+  return block.join("\n");
+}
+
+function formatAttachmentLabel(name: string | undefined, fallbackIndex: number): string {
+  const trimmed = (name ?? "").trim();
+  return trimmed || `file-${String(fallbackIndex).padStart(3, "0")}`;
+}
+
+function formatAttachmentMeta(mimeType: string | undefined, fileSize: number | undefined): string {
+  const parts: string[] = [];
+
+  if (mimeType && mimeType.trim()) {
+    parts.push(mimeType.trim());
+  }
+
+  const prettySize = formatByteSize(fileSize);
+  if (prettySize) {
+    parts.push(prettySize);
+  }
+
+  return parts.join(" | ");
+}
+
+function formatByteSize(size: number | undefined): string {
+  if (!Number.isFinite(size) || !size || size <= 0) {
+    return "";
+  }
+
+  const units = ["B", "KB", "MB", "GB"];
+  let value = size;
+  let unitIndex = 0;
+
+  while (value >= 1024 && unitIndex < units.length - 1) {
+    value /= 1024;
+    unitIndex += 1;
+  }
+
+  const precision = value >= 10 || unitIndex === 0 ? 0 : 1;
+  return `${value.toFixed(precision)} ${units[unitIndex]}`;
 }
 
 function appendYamlBlockField(lines: string[], key: string, value: string) {

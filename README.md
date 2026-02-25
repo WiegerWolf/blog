@@ -76,7 +76,7 @@ Private bot that forwards thread messages into PRs.
 Flow:
 
 1. Write in Telegram Saved Messages.
-2. Forward the full thread to your bot (text + photos in order).
+2. Forward the full thread to your bot (text + media + files in order).
 3. Send `/publish`, then pick publish date (`first`, `today`, or `YYYY-MM-DD`).
 4. Bot creates a branch and opens a PR to `main`.
 
@@ -88,6 +88,8 @@ Behavior:
 - Infers title, description, and slug.
 - Saves media to `public/images/<slug>/`.
 - Writes post file to `src/pages/en/blog/` or `src/pages/ru/blog/`.
+- Imports Telegram documents (ZIP, PDF, etc.) to `public/files/<slug>/` when possible.
+- If a file cannot be downloaded, keeps an attachment placeholder in the post instead of skipping it.
 - Adds up to 4 `previewImages` for thread cards.
 - Imports native Telegram videos (with captions) and saves them to `public/videos/<slug>/`.
 - Adds `previewVideos` for video thread cards.
