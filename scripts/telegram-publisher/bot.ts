@@ -824,7 +824,19 @@ async function buildPostFromDraft(
     if (item.kind === "video" && item.fileId) {
       videoIndex += 1;
       await mkdir(videosDir, { recursive: true });
-      const saved = await downloadTelegramFile(item.fileId, videosDir, videoIndex, "videos", item.mimeType);
+      let saved: { absolutePath: string; publicPath: string };
+      try {
+        saved = await downloadTelegramFile(item.fileId, videosDir, videoIndex, "videos", item.mimeType);
+      } catch (error) {
+        if (isTelegramFileTooBigError(error)) {
+          throw new Error(
+            "Telegram video is too large for Bot API download. Upload a smaller file or replace it with a link."
+          );
+        }
+
+        throw error;
+      }
+
       mediaPaths.push(saved.absolutePath);
       if (previewVideos.length < 2) {
         previewVideos.push(saved.publicPath);
@@ -1288,16 +1300,43 @@ async function telegramRequest<T>(method: string, payload: Record<string, unknow
     body: JSON.stringify(payload)
   });
 
+  const rawText = await response.text();
+  const parsed = safeParseJson(rawText) as TelegramApiResponse<T> | null;
+
   if (!response.ok) {
-    throw new Error(`Telegram API ${method} failed with HTTP ${response.status}`);
+    const description =
+      parsed && typeof parsed === "object" && "description" in parsed && typeof (parsed as { description?: unknown }).description === "string"
+        ? (parsed as { description: string }).description
+        : rawText;
+    throw new Error(`Telegram API ${method} failed (${response.status}): ${description || "no response body"}`);
   }
 
-  const data = (await response.json()) as TelegramApiResponse<T>;
-  if (!data.ok) {
-    throw new Error(`Telegram API ${method} returned ok=false`);
+  const data = parsed;
+  if (!data || !data.ok) {
+    const description =
+      data && typeof data === "object" && "description" in data && typeof (data as { description?: unknown }).description === "string"
+        ? (data as { description: string }).description
+        : "ok=false";
+    throw new Error(`Telegram API ${method} returned ${description}`);
   }
 
   return data.result;
+}
+
+function isTelegramFileTooBigError(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  return error.message.toLowerCase().includes("file is too big");
+}
+
+function safeParseJson(value: string): unknown {
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
 }
 
 async function githubRequest<T>(endpoint: string, method: "POST" | "GET" | "PUT" | "DELETE", body?: unknown): Promise<T> {
