@@ -9,6 +9,7 @@ type BlogPostModule = {
     pubDate: string | Date;
     messageCount?: number;
     previewImages?: string[];
+    previewVideos?: string[];
     youtubeVideoIds?: string[];
     singleMessageHtml?: string;
   };
@@ -24,6 +25,7 @@ const posts = postModules
     url: post.url,
     messageCount: post.frontmatter.messageCount ?? 0,
     previewImages: (post.frontmatter.previewImages ?? []).slice(0, 4),
+    previewVideos: (post.frontmatter.previewVideos ?? []).slice(0, 2),
     youtubeVideoIds: (post.frontmatter.youtubeVideoIds ?? []).slice(0, 2),
     singleMessageHtml: (post.frontmatter.singleMessageHtml ?? "").trim()
   }))
@@ -41,9 +43,10 @@ const posts = postModules
       {
         posts.map((post) => {
           const isQuickThread =
-            post.messageCount === 1 && (post.previewImages.length === 1 || post.youtubeVideoIds.length > 0);
+            post.messageCount === 1 &&
+            (post.previewImages.length === 1 || post.previewVideos.length === 1 || post.youtubeVideoIds.length > 0);
 
-          if (isQuickThread && post.singleMessageHtml) {
+          if (isQuickThread) {
             return (
               <article class="thread-item thread-item-quick">
                 <p class="thread-meta">
@@ -62,6 +65,11 @@ const posts = postModules
                     ))}
                   </div>
                 )}
+                {post.previewVideos.length > 0 && (
+                  <div class="thread-video">
+                    <video controls playsinline preload="metadata" src={post.previewVideos[0]}></video>
+                  </div>
+                )}
                 {post.youtubeVideoIds.length > 0 && (
                   <div class="thread-embed">
                     <iframe
@@ -74,7 +82,7 @@ const posts = postModules
                     ></iframe>
                   </div>
                 )}
-                <div class="thread-single" set:html={post.singleMessageHtml} />
+                {post.singleMessageHtml && <div class="thread-single" set:html={post.singleMessageHtml} />}
               </article>
             );
           }
@@ -97,6 +105,11 @@ const posts = postModules
                   {post.previewImages.map((image) => (
                     <img src={image} alt="" loading="lazy" decoding="async" />
                   ))}
+                </div>
+              )}
+              {post.previewImages.length === 0 && post.previewVideos.length > 0 && (
+                <div class="thread-video">
+                  <video controls playsinline preload="metadata" src={post.previewVideos[0]}></video>
                 </div>
               )}
               <p class="thread-open">Открыть тред →</p>

@@ -27,6 +27,12 @@ interface TelegramDocument {
   mime_type?: string;
 }
 
+interface TelegramVideo {
+  file_id: string;
+  mime_type?: string;
+  file_size?: number;
+}
+
 interface TelegramForwardOrigin {
   date: number;
 }
@@ -67,6 +73,8 @@ interface TelegramMessage {
   caption?: string;
   caption_entities?: TelegramMessageEntity[];
   photo?: TelegramPhotoSize[];
+  video?: TelegramVideo;
+  animation?: TelegramVideo;
   document?: TelegramDocument;
   forward_origin?: TelegramForwardOrigin;
   forward_date?: number;
@@ -88,12 +96,13 @@ interface TelegramFile {
 
 interface DraftItem {
   messageId: number;
-  kind: "text" | "photo";
+  kind: "text" | "photo" | "video";
   text?: string;
   textPlain?: string;
   caption?: string;
   captionPlain?: string;
   fileId?: string;
+  mimeType?: string;
   sourceDate: number;
   originalDate: number;
   originalDateSource: "forward" | "received";
@@ -123,6 +132,7 @@ interface PublishResult {
   postPath: string;
   mediaPaths: string[];
   imageDirPath: string;
+  videoDirPath?: string;
   slug: string;
   lang: Lang;
   title: string;
@@ -444,6 +454,7 @@ async function handleCommand(message: TelegramMessage, commandText: string, stat
 
     const textCount = draft.items.filter((item) => item.kind === "text").length;
     const photoCount = draft.items.filter((item) => item.kind === "photo").length;
+    const videoCount = draft.items.filter((item) => item.kind === "video").length;
     const detectedDate = draft.items.length > 0 ? getDetectedPublishDate(draft) : null;
     const pendingLine = draft.pendingPublish
       ? `\nPending publish date choice: yes (default ${draft.pendingPublish.detectedDate})`
@@ -454,7 +465,7 @@ async function handleCommand(message: TelegramMessage, commandText: string, stat
     const lastErrorLine = draft.lastPublishError ? `\nLast publish error: ${draft.lastPublishError}` : "";
     await sendMessage(
       chatId,
-      `Draft messages: ${draft.items.length}\nText blocks: ${textCount}\nPhotos: ${photoCount}\nStarted: ${draft.createdAt}${detectedLine}${pendingLine}${lastErrorLine}`
+      `Draft messages: ${draft.items.length}\nText blocks: ${textCount}\nPhotos: ${photoCount}\nVideos: ${videoCount}\nStarted: ${draft.createdAt}${detectedLine}${pendingLine}${lastErrorLine}`
     );
     return;
   }
@@ -681,6 +692,40 @@ function extractDraftItem(message: TelegramMessage): DraftItem | null {
       ...base,
       kind: "photo",
       fileId: message.document.file_id,
+      mimeType: message.document.mime_type,
+      caption: renderedCaption || undefined,
+      captionPlain: plainCaption
+    };
+  }
+
+  if (message.video) {
+    return {
+      ...base,
+      kind: "video",
+      fileId: message.video.file_id,
+      mimeType: message.video.mime_type,
+      caption: renderedCaption || undefined,
+      captionPlain: plainCaption
+    };
+  }
+
+  if (message.animation) {
+    return {
+      ...base,
+      kind: "video",
+      fileId: message.animation.file_id,
+      mimeType: message.animation.mime_type,
+      caption: renderedCaption || undefined,
+      captionPlain: plainCaption
+    };
+  }
+
+  if (message.document?.mime_type?.startsWith("video/")) {
+    return {
+      ...base,
+      kind: "video",
+      fileId: message.document.file_id,
+      mimeType: message.document.mime_type,
       caption: renderedCaption || undefined,
       captionPlain: plainCaption
     };
@@ -724,13 +769,16 @@ async function buildPostFromDraft(
 
   const blogDir = path.join(config.repoDir, "src", "pages", lang, "blog");
   const imagesDir = path.join(config.repoDir, "public", "images", slug);
+  const videosDir = path.join(config.repoDir, "public", "videos", slug);
   await mkdir(blogDir, { recursive: true });
 
   const bodyBlocks: string[] = [];
   const mediaPaths: string[] = [];
   const previewImages: string[] = [];
+  const previewVideos: string[] = [];
   const previewYoutubeVideoIds: string[] = [];
-  let mediaIndex = 0;
+  let imageIndex = 0;
+  let videoIndex = 0;
 
   for (const item of sortedItems) {
     if (item.kind === "text" && item.text) {
@@ -748,15 +796,15 @@ async function buildPostFromDraft(
     }
 
     if (item.kind === "photo" && item.fileId) {
-      mediaIndex += 1;
+      imageIndex += 1;
       await mkdir(imagesDir, { recursive: true });
-      const saved = await downloadTelegramImage(item.fileId, imagesDir, mediaIndex);
+      const saved = await downloadTelegramFile(item.fileId, imagesDir, imageIndex, "images", item.mimeType);
       mediaPaths.push(saved.absolutePath);
       if (previewImages.length < 4) {
         previewImages.push(saved.publicPath);
       }
 
-      const altText = inferImageAlt(item.captionPlain, mediaIndex, lang);
+      const altText = inferImageAlt(item.captionPlain, imageIndex, lang);
       if (item.caption && item.caption.trim()) {
         bodyBlocks.push(
           [
@@ -769,6 +817,30 @@ async function buildPostFromDraft(
       } else {
         bodyBlocks.push(`![${escapeMarkdownAlt(altText)}](${saved.publicPath})`);
       }
+
+      continue;
+    }
+
+    if (item.kind === "video" && item.fileId) {
+      videoIndex += 1;
+      await mkdir(videosDir, { recursive: true });
+      const saved = await downloadTelegramFile(item.fileId, videosDir, videoIndex, "videos", item.mimeType);
+      mediaPaths.push(saved.absolutePath);
+      if (previewVideos.length < 2) {
+        previewVideos.push(saved.publicPath);
+      }
+
+      const videoBlock = [
+        "<figure>",
+        `  <video controls playsinline preload=\"metadata\" src=\"${saved.publicPath}\"></video>`
+      ];
+
+      if (item.caption && item.caption.trim()) {
+        videoBlock.push(`  <figcaption>${item.caption}</figcaption>`);
+      }
+
+      videoBlock.push("</figure>");
+      bodyBlocks.push(videoBlock.join("\n"));
     }
   }
 
@@ -786,6 +858,13 @@ async function buildPostFromDraft(
     frontmatter.push("previewImages:");
     for (const previewImagePath of previewImages) {
       frontmatter.push(`  - "${escapeYamlString(previewImagePath)}"`);
+    }
+  }
+
+  if (previewVideos.length > 0) {
+    frontmatter.push("previewVideos:");
+    for (const previewVideoPath of previewVideos) {
+      frontmatter.push(`  - "${escapeYamlString(previewVideoPath)}"`);
     }
   }
 
@@ -815,6 +894,7 @@ async function buildPostFromDraft(
     postPath,
     mediaPaths,
     imageDirPath: imagesDir,
+    videoDirPath: videosDir,
     slug,
     lang,
     title,
@@ -1124,6 +1204,9 @@ async function cleanupGeneratedArtifacts(publish: PublishResult) {
 
   await rm(publish.postPath, { force: true });
   await rm(publish.imageDirPath, { recursive: true, force: true });
+  if (publish.videoDirPath) {
+    await rm(publish.videoDirPath, { recursive: true, force: true });
+  }
 }
 
 async function fetchUpdates(offset: number, timeoutSeconds: number): Promise<TelegramUpdate[]> {
@@ -1142,12 +1225,18 @@ async function sendMessage(chatId: number, text: string) {
   });
 }
 
-async function downloadTelegramImage(fileId: string, targetDir: string, index: number) {
+async function downloadTelegramFile(
+  fileId: string,
+  targetDir: string,
+  index: number,
+  publicBaseDir: "images" | "videos",
+  mimeType?: string
+) {
   const telegramFile = await telegramRequest<TelegramFile>("getFile", {
     file_id: fileId
   });
 
-  const ext = path.extname(telegramFile.file_path) || ".jpg";
+  const ext = normalizeMediaExtension(path.extname(telegramFile.file_path), mimeType, publicBaseDir);
   const filename = `${String(index).padStart(3, "0")}${ext.toLowerCase()}`;
   const absolutePath = path.join(targetDir, filename);
 
@@ -1162,8 +1251,32 @@ async function downloadTelegramImage(fileId: string, targetDir: string, index: n
 
   return {
     absolutePath,
-    publicPath: `/images/${path.basename(targetDir)}/${filename}`
+    publicPath: `/${publicBaseDir}/${path.basename(targetDir)}/${filename}`
   };
+}
+
+function normalizeMediaExtension(
+  currentExtension: string,
+  mimeType: string | undefined,
+  publicBaseDir: "images" | "videos"
+): string {
+  if (currentExtension) {
+    return currentExtension;
+  }
+
+  if (mimeType) {
+    const lower = mimeType.toLowerCase();
+    if (lower === "image/jpeg") return ".jpg";
+    if (lower === "image/png") return ".png";
+    if (lower === "image/webp") return ".webp";
+    if (lower === "image/gif") return ".gif";
+    if (lower === "video/mp4") return ".mp4";
+    if (lower === "video/webm") return ".webm";
+    if (lower === "video/quicktime") return ".mov";
+    if (lower === "video/x-matroska") return ".mkv";
+  }
+
+  return publicBaseDir === "videos" ? ".mp4" : ".jpg";
 }
 
 async function telegramRequest<T>(method: string, payload: Record<string, unknown>): Promise<T> {
