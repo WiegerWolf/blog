@@ -936,7 +936,7 @@ async function attemptAutoMergeForBotPr(pullRequest: CreatedPullRequest): Promis
     }
 
     if (mergeability.state === "ready" && checks.state === "ready") {
-      return mergePullRequest(pull.number, pull.head.sha);
+      return mergePullRequest(pull.number, pull.head.sha, pull.head.ref);
     }
 
     if (Date.now() >= deadlineAt) {
@@ -1067,7 +1067,7 @@ async function evaluatePullChecks(
   };
 }
 
-async function mergePullRequest(prNumber: number, expectedHeadSha: string): Promise<AutoMergeResult> {
+async function mergePullRequest(prNumber: number, expectedHeadSha: string, headRef: string): Promise<AutoMergeResult> {
   try {
     const mergeResponse = await githubRequest<{ merged: boolean; message?: string }>(
       `/repos/${config.githubRepo}/pulls/${prNumber}/merge`,
@@ -1085,15 +1085,31 @@ async function mergePullRequest(prNumber: number, expectedHeadSha: string): Prom
       };
     }
 
+    const deleted = await deleteRemoteBranch(headRef);
+
     return {
       merged: true,
-      reason: "merged"
+      reason: deleted ? "merged and branch deleted" : "merged (branch cleanup failed)"
     };
   } catch (error) {
     return {
       merged: false,
       reason: error instanceof Error ? error.message : "merge API request failed"
     };
+  }
+}
+
+async function deleteRemoteBranch(branchRef: string): Promise<boolean> {
+  try {
+    const encodedRef = encodeURIComponent(`heads/${branchRef}`);
+    await githubRequest(`/repos/${config.githubRepo}/git/refs/${encodedRef}`, "DELETE");
+    return true;
+  } catch (error) {
+    console.warn(
+      `Branch cleanup failed for ${branchRef}:`,
+      error instanceof Error ? error.message : "unknown error"
+    );
+    return false;
   }
 }
 
@@ -1171,7 +1187,7 @@ async function telegramRequest<T>(method: string, payload: Record<string, unknow
   return data.result;
 }
 
-async function githubRequest<T>(endpoint: string, method: "POST" | "GET" | "PUT", body?: unknown): Promise<T> {
+async function githubRequest<T>(endpoint: string, method: "POST" | "GET" | "PUT" | "DELETE", body?: unknown): Promise<T> {
   const response = await fetch(`https://api.github.com${endpoint}`, {
     method,
     headers: {
@@ -1186,6 +1202,10 @@ async function githubRequest<T>(endpoint: string, method: "POST" | "GET" | "PUT"
   if (!response.ok) {
     const errorText = await response.text();
     throw new Error(`GitHub API request failed (${response.status}): ${errorText}`);
+  }
+
+  if (response.status === 204) {
+    return undefined as T;
   }
 
   return (await response.json()) as T;
