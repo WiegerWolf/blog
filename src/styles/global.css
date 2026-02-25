@@ -386,6 +386,27 @@ h2 {
   gap: 0.85rem;
 }
 
+.thread-load-more {
+  margin-top: 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.5rem;
+  padding: 0.55rem 0.95rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-strong);
+  color: var(--text);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.thread-load-more:disabled {
+  opacity: 0.7;
+  cursor: progress;
+}
+
 .thread-item {
   display: block;
   background: var(--surface-strong);

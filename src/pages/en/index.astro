@@ -1,35 +1,24 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
-import { getFeedTitle } from "../../lib/postPreview";
+import { sortFeedItemsDesc, toThreadFeedItem, type ThreadModule } from "../../lib/threadFeed";
+import { FEED_PAGE_SIZE } from "../../lib/threadFeedPaging";
 
-type BlogPostModule = {
-  frontmatter: {
-    title: string;
-    description: string;
-    pubDate: string | Date;
-    messageCount?: number;
-    previewImages?: string[];
-    previewVideos?: string[];
-    youtubeVideoIds?: string[];
-    singleMessageHtml?: string;
-  };
-  url: string;
+const initialLimit = FEED_PAGE_SIZE;
+const modules = Object.values(import.meta.glob("./blog/*.md", { eager: true })) as ThreadModule[];
+const allPosts = sortFeedItemsDesc(modules.map((module) => toThreadFeedItem(module, "en")));
+const posts = allPosts.slice(0, initialLimit);
+const hasMore = allPosts.length > posts.length;
+
+const dateOptions: Intl.DateTimeFormatOptions = {
+  year: "numeric",
+  month: "short",
+  day: "numeric"
 };
 
-const postModules = Object.values(import.meta.glob("./blog/*.md", { eager: true })) as BlogPostModule[];
+function formatEnDate(iso: string) {
+  return new Date(iso).toLocaleDateString("en-US", dateOptions);
+}
 
-const posts = postModules
-  .map((post) => ({
-    title: getFeedTitle(post.frontmatter.title, post.frontmatter.description),
-    pubDate: new Date(post.frontmatter.pubDate),
-    url: post.url,
-    messageCount: post.frontmatter.messageCount ?? 0,
-    previewImages: (post.frontmatter.previewImages ?? []).slice(0, 4),
-    previewVideos: (post.frontmatter.previewVideos ?? []).slice(0, 2),
-    youtubeVideoIds: (post.frontmatter.youtubeVideoIds ?? []).slice(0, 2),
-    singleMessageHtml: (post.frontmatter.singleMessageHtml ?? "").trim()
-  }))
-  .sort((a, b) => b.pubDate.getTime() - a.pubDate.getTime());
 ---
 
 <BaseLayout
@@ -39,64 +28,44 @@ const posts = postModules
 >
   <section>
     <h2 class="section-title">Thread Feed</h2>
-    <div class="thread-list">
+    <div class="thread-list" data-thread-list>
       {
-        posts.map((post) => {
-          const isQuickThread =
-            post.messageCount === 1 &&
-            (post.previewImages.length === 1 || post.previewVideos.length === 1 || post.youtubeVideoIds.length > 0);
-
-          if (isQuickThread) {
-            return (
-              <article class="thread-item thread-item-quick">
-                <p class="thread-meta">
-                  <a class="thread-quick-link" href={post.url}>
-                    {post.pubDate.toLocaleDateString("en-US", {
-                      year: "numeric",
-                      month: "short",
-                      day: "numeric"
-                    })}
-                  </a>
-                </p>
-                {post.previewImages.length > 0 && (
-                  <div class="thread-preview" data-count={post.previewImages.length}>
-                    {post.previewImages.map((image) => (
-                      <img src={image} alt="" loading="lazy" decoding="async" />
-                    ))}
-                  </div>
-                )}
-                {post.previewVideos.length > 0 && (
-                  <div class="thread-video">
-                    <video controls playsinline preload="metadata" src={post.previewVideos[0]}></video>
-                  </div>
-                )}
-                {post.youtubeVideoIds.length > 0 && (
-                  <div class="thread-embed">
-                    <iframe
-                      src={`https://www.youtube-nocookie.com/embed/${post.youtubeVideoIds[0]}`}
-                      title="YouTube video"
-                      loading="lazy"
-                      referrerpolicy="strict-origin-when-cross-origin"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                      allowfullscreen
-                    ></iframe>
-                  </div>
-                )}
-                {post.singleMessageHtml && <div class="thread-single" set:html={post.singleMessageHtml} />}
-              </article>
-            );
-          }
-
-          return (
+        posts.map((post) =>
+          post.isQuickThread ? (
+            <article class="thread-item thread-item-quick">
+              <p class="thread-meta">
+                <a class="thread-quick-link" href={post.url}>{formatEnDate(post.pubDateIso)}</a>
+              </p>
+              {post.previewImages.length > 0 && (
+                <div class="thread-preview" data-count={post.previewImages.length}>
+                  {post.previewImages.map((image) => (
+                    <img src={image} alt="" loading="lazy" decoding="async" />
+                  ))}
+                </div>
+              )}
+              {post.previewVideos.length > 0 && (
+                <div class="thread-video">
+                  <video controls playsinline preload="metadata" src={post.previewVideos[0]}></video>
+                </div>
+              )}
+              {post.youtubeVideoIds.length > 0 && (
+                <div class="thread-embed">
+                  <iframe
+                    src={`https://www.youtube-nocookie.com/embed/${post.youtubeVideoIds[0]}`}
+                    title="YouTube video"
+                    loading="lazy"
+                    referrerpolicy="strict-origin-when-cross-origin"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowfullscreen
+                  ></iframe>
+                </div>
+              )}
+              {post.singleMessageHtml && <div class="thread-single" set:html={post.singleMessageHtml} />}
+            </article>
+          ) : (
             <a class="thread-item" href={post.url}>
               <p class="thread-meta">
-                <span class="card-date">
-                  {post.pubDate.toLocaleDateString("en-US", {
-                    year: "numeric",
-                    month: "short",
-                    day: "numeric"
-                  })}
-                </span>
+                <span class="card-date">{formatEnDate(post.pubDateIso)}</span>
                 {post.messageCount > 1 && <span class="msg-count">{post.messageCount} msgs</span>}
               </p>
               <h3 class="thread-main">{post.title}</h3>
@@ -114,9 +83,279 @@ const posts = postModules
               )}
               <p class="thread-open">Open thread →</p>
             </a>
-          );
-        })
+          )
+        )
       }
     </div>
+    {
+      hasMore && (
+        <button
+          class="thread-load-more"
+          type="button"
+          data-load-more
+          data-endpoint-prefix="/en/api/threads"
+          data-next-page="2"
+          data-label="Load more"
+          data-loading-label="Loading..."
+          data-locale="en-US"
+          data-open-label="Open thread →"
+          data-msg-unit="msgs"
+          data-show-lang="false"
+        >
+          Load more
+        </button>
+      )
+    }
   </section>
+
+  <script is:inline>
+    (() => {
+      const list = document.querySelector("[data-thread-list]");
+      const button = document.querySelector("[data-load-more]");
+
+      if (!(list instanceof HTMLElement) || !(button instanceof HTMLButtonElement)) {
+        return;
+      }
+
+      const endpointPrefix = button.dataset.endpointPrefix || "";
+      const locale = button.dataset.locale || "en-US";
+      const openLabel = button.dataset.openLabel || "Open thread →";
+      const msgUnit = button.dataset.msgUnit || "msgs";
+      const showLang = button.dataset.showLang === "true";
+      const idleLabel = button.dataset.label || "Load more";
+      const loadingLabel = button.dataset.loadingLabel || "Loading...";
+      const parsedNextPage = Number.parseInt(button.dataset.nextPage || "2", 10);
+      let nextPage = Number.isFinite(parsedNextPage) && parsedNextPage > 1 ? parsedNextPage : 2;
+      let loading = false;
+      let observer;
+      const seenUrls = new Set();
+
+      for (const link of list.querySelectorAll("a.thread-item[href], a.thread-quick-link[href]")) {
+        const href = link.getAttribute("href");
+        if (href) {
+          seenUrls.add(href);
+        }
+      }
+
+      const dateOptions = {
+        year: "numeric",
+        month: "short",
+        day: "numeric"
+      };
+
+      const stopLoading = () => {
+        button.hidden = true;
+        button.disabled = true;
+        observer?.disconnect();
+      };
+
+      const formatDate = (iso) => new Date(iso).toLocaleDateString(locale, dateOptions);
+
+      const renderMedia = (item, options = {}) => {
+        const fragment = document.createDocumentFragment();
+        const hasImages = Array.isArray(item.previewImages) && item.previewImages.length > 0;
+        const allowVideoWithImages = options.allowVideoWithImages === true;
+
+        if (hasImages) {
+          const preview = document.createElement("div");
+          preview.className = "thread-preview";
+          preview.dataset.count = String(item.previewImages.length);
+
+          for (const imagePath of item.previewImages) {
+            const image = document.createElement("img");
+            image.src = imagePath;
+            image.alt = "";
+            image.loading = "lazy";
+            image.decoding = "async";
+            preview.appendChild(image);
+          }
+
+          fragment.appendChild(preview);
+        }
+
+        const shouldRenderVideo =
+          Array.isArray(item.previewVideos) &&
+          item.previewVideos.length > 0 &&
+          (allowVideoWithImages || !hasImages);
+
+        if (shouldRenderVideo) {
+          const wrap = document.createElement("div");
+          wrap.className = "thread-video";
+          const video = document.createElement("video");
+          video.src = item.previewVideos[0];
+          video.controls = true;
+          video.playsInline = true;
+          video.preload = "metadata";
+          wrap.appendChild(video);
+          fragment.appendChild(wrap);
+        }
+
+        if (Array.isArray(item.youtubeVideoIds) && item.youtubeVideoIds.length > 0) {
+          const wrap = document.createElement("div");
+          wrap.className = "thread-embed";
+          const iframe = document.createElement("iframe");
+          iframe.src = `https://www.youtube-nocookie.com/embed/${item.youtubeVideoIds[0]}`;
+          iframe.title = "YouTube video";
+          iframe.loading = "lazy";
+          iframe.referrerPolicy = "strict-origin-when-cross-origin";
+          iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
+          iframe.allowFullscreen = true;
+          wrap.appendChild(iframe);
+          fragment.appendChild(wrap);
+        }
+
+        return fragment;
+      };
+
+      const renderThread = (item) => {
+        if (item.isQuickThread) {
+          const article = document.createElement("article");
+          article.className = "thread-item thread-item-quick";
+
+          const meta = document.createElement("p");
+          meta.className = "thread-meta";
+          const dateLink = document.createElement("a");
+          dateLink.className = "thread-quick-link";
+          dateLink.href = item.url;
+          dateLink.textContent = formatDate(item.pubDateIso);
+          meta.appendChild(dateLink);
+
+          if (showLang) {
+            const langBadge = document.createElement("span");
+            langBadge.className = "lang-badge";
+            langBadge.dataset.lang = item.lang;
+            langBadge.textContent = item.lang === "ru" ? "RU" : "EN";
+            meta.appendChild(langBadge);
+          }
+
+          article.appendChild(meta);
+          article.appendChild(renderMedia(item, { allowVideoWithImages: true }));
+
+          if (item.singleMessageHtml) {
+            const text = document.createElement("div");
+            text.className = "thread-single";
+            text.innerHTML = item.singleMessageHtml;
+            article.appendChild(text);
+          }
+
+          return article;
+        }
+
+        const link = document.createElement("a");
+        link.className = "thread-item";
+        link.href = item.url;
+
+        const meta = document.createElement("p");
+        meta.className = "thread-meta";
+        const date = document.createElement("span");
+        date.className = "card-date";
+        date.textContent = formatDate(item.pubDateIso);
+        meta.appendChild(date);
+
+        if (showLang) {
+          const langBadge = document.createElement("span");
+          langBadge.className = "lang-badge";
+          langBadge.dataset.lang = item.lang;
+          langBadge.textContent = item.lang === "ru" ? "RU" : "EN";
+          meta.appendChild(langBadge);
+        }
+
+        if ((item.messageCount || 0) > 1) {
+          const count = document.createElement("span");
+          count.className = "msg-count";
+          count.textContent = `${item.messageCount} ${item.lang === "ru" ? "сообщ." : msgUnit}`;
+          meta.appendChild(count);
+        }
+
+        link.appendChild(meta);
+
+        const title = document.createElement("h3");
+        title.className = "thread-main";
+        title.textContent = item.title || "Thread";
+        link.appendChild(title);
+
+        link.appendChild(renderMedia(item));
+
+        const open = document.createElement("p");
+        open.className = "thread-open";
+        open.textContent = openLabel;
+        link.appendChild(open);
+
+        return link;
+      };
+
+      const loadMore = async () => {
+        if (loading || !endpointPrefix) {
+          return;
+        }
+
+        loading = true;
+        button.disabled = true;
+        button.textContent = loadingLabel;
+
+        try {
+          const response = await fetch(`${endpointPrefix}/${nextPage}.json`, {
+            headers: { Accept: "application/json" }
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+          }
+
+          const payload = await response.json();
+          const items = Array.isArray(payload.items) ? payload.items : [];
+          let appended = 0;
+
+          for (const item of items) {
+            if (!item || typeof item.url !== "string" || seenUrls.has(item.url)) {
+              continue;
+            }
+            list.appendChild(renderThread(item));
+            seenUrls.add(item.url);
+            appended += 1;
+          }
+
+          const hasMore = payload.hasMore === true;
+          const candidateNextPage =
+            typeof payload.nextPage === "number" && Number.isFinite(payload.nextPage) && payload.nextPage > nextPage
+              ? payload.nextPage
+              : null;
+
+          if (!hasMore || candidateNextPage === null || (items.length === 0 && appended === 0)) {
+            stopLoading();
+            return;
+          }
+
+          nextPage = candidateNextPage;
+          button.dataset.nextPage = String(nextPage);
+        } catch {
+          button.textContent = "Failed, tap to retry";
+          button.disabled = false;
+          loading = false;
+          return;
+        }
+
+        loading = false;
+        button.disabled = false;
+        button.textContent = idleLabel;
+      };
+
+      button.addEventListener("click", () => {
+        void loadMore();
+      });
+
+      observer = new IntersectionObserver(
+        (entries) => {
+          const entry = entries[0];
+          if (!entry || !entry.isIntersecting || loading) {
+            return;
+          }
+          void loadMore();
+        },
+        { rootMargin: "280px" }
+      );
+
+      observer.observe(button);
+    })();
+  </script>
 </BaseLayout>
