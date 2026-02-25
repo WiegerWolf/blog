@@ -94,6 +94,7 @@ Behavior:
 - Preserves Telegram formatting (italic, bold, code, links, code blocks).
 - Auto-embeds YouTube links from text messages.
 - Auto-merges bot-opened PRs when mergeable and checks are green.
+- Sends clear publish outcome in Telegram (merged vs waiting) and the final post URL.
 
 Supported bot commands:
 
@@ -143,6 +144,7 @@ Optional variables:
 - `AUTO_MERGE_WAIT_SECONDS` (default: `300`)
 - `AUTO_MERGE_POLL_SECONDS` (default: `5`)
 - `AUTO_MERGE_METHOD` (default: `squash`, options: `merge`, `squash`, `rebase`)
+- `PUBLIC_SITE_URL` (optional explicit base URL used in bot publish messages)
 
 ### Run bot on home server (Docker)
 

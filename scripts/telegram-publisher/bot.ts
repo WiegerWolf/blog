@@ -163,6 +163,11 @@ interface GitHubPullDetails {
 
 interface GitHubCombinedStatus {
   state: string;
+  total_count?: number;
+  statuses?: Array<{
+    state?: string;
+    context?: string;
+  }>;
 }
 
 interface GitHubCheckRunsResponse {
@@ -214,7 +219,8 @@ const config = {
   autoMergeBotPrs: parseBooleanEnv(process.env.AUTO_MERGE_BOT_PRS, true),
   autoMergeWaitSeconds: Number(process.env.AUTO_MERGE_WAIT_SECONDS ?? "300"),
   autoMergePollSeconds: Number(process.env.AUTO_MERGE_POLL_SECONDS ?? "5"),
-  autoMergeMethod: (process.env.AUTO_MERGE_METHOD ?? "squash").toLowerCase() as GitHubMergeMethod
+  autoMergeMethod: (process.env.AUTO_MERGE_METHOD ?? "squash").toLowerCase() as GitHubMergeMethod,
+  publicSiteUrl: normalizeSiteBaseUrl(process.env.PUBLIC_SITE_URL ?? "")
 };
 
 if (!Number.isFinite(config.ownerId)) {
@@ -608,20 +614,29 @@ async function publishDraft(
 
     delete state.drafts[chatIdKey];
 
-    const autoMergeLine = autoMergeResult
+    const postUrl = await resolvePublishedPostUrl(publishResult.lang, publishResult.slug);
+    const locationLine = postUrl
+      ? `Post URL: ${postUrl}`
+      : `Post path: /${publishResult.lang}/blog/${publishResult.slug}/`;
+    const outcomeLine = autoMergeResult
       ? autoMergeResult.merged
-        ? `Auto-merge: merged (${config.autoMergeMethod})`
-        : `Auto-merge: skipped (${autoMergeResult.reason})`
-      : "Auto-merge: disabled";
+        ? `Outcome: merged to ${config.baseBranch} (${config.autoMergeMethod})`
+        : `Outcome: PR opened, not merged (${autoMergeResult.reason})`
+      : "Outcome: PR opened (auto-merge disabled)";
+    const visibilityLine = autoMergeResult?.merged
+      ? "Visibility: appears after GitHub Pages deploy finishes"
+      : "Visibility: appears after PR merge and Pages deploy";
 
     await sendMessage(
       chatId,
       [
         `PR created: ${pullRequest.html_url}`,
+        outcomeLine,
+        visibilityLine,
+        locationLine,
         `Language: ${publishResult.lang}`,
         `Slug: ${publishResult.slug}`,
         `Title: ${publishResult.title}`,
-        autoMergeLine,
         options.mode === "auto" ? "Mode: auto-finalize" : "Mode: manual publish"
       ].join("\n")
     );
@@ -990,12 +1005,7 @@ async function evaluatePullChecks(
     };
   }
 
-  if (commitStatusState === "pending") {
-    return {
-      state: "pending",
-      reason: "commit status pending"
-    };
-  }
+  const statusCount = combinedStatus.total_count ?? combinedStatus.statuses?.length ?? 0;
 
   let checkRunsResponse: GitHubCheckRunsResponse;
   try {
@@ -1035,6 +1045,20 @@ async function evaluatePullChecks(
         reason: `check failed (${checkRun.name})`
       };
     }
+  }
+
+  if (commitStatusState === "pending") {
+    if (statusCount === 0 && checkRunsResponse.check_runs.length === 0) {
+      return {
+        state: "ready",
+        reason: "no status checks configured"
+      };
+    }
+
+    return {
+      state: "pending",
+      reason: "commit status pending"
+    };
   }
 
   return {
@@ -1731,6 +1755,47 @@ function truncate(input: string, limit: number): string {
 function toRepoRelativePath(absolutePath: string): string {
   const relative = path.relative(config.repoDir, absolutePath);
   return relative.split(path.sep).join(path.posix.sep);
+}
+
+function normalizeSiteBaseUrl(input: string): string {
+  const trimmed = input.trim();
+  if (!trimmed) {
+    return "";
+  }
+
+  const prefixed = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  try {
+    const parsed = new URL(prefixed);
+    parsed.pathname = parsed.pathname.replace(/\/+$/, "");
+    return parsed.toString().replace(/\/+$/, "");
+  } catch {
+    return "";
+  }
+}
+
+async function resolvePublishedPostUrl(lang: Lang, slug: string): Promise<string | null> {
+  const configuredBase = config.publicSiteUrl;
+  if (configuredBase) {
+    return `${configuredBase}/${lang}/blog/${slug}/`;
+  }
+
+  const cnamePath = path.join(config.repoDir, "public", "CNAME");
+  try {
+    const cnameRaw = await readFile(cnamePath, "utf8");
+    const cname = cnameRaw.trim();
+    if (cname) {
+      return `https://${cname}/${lang}/blog/${slug}/`;
+    }
+  } catch {
+    // Ignore missing CNAME and fall back to GitHub Pages URL.
+  }
+
+  const [owner, repo] = config.githubRepo.split("/");
+  if (owner && repo) {
+    return `https://${owner}.github.io/${repo}/${lang}/blog/${slug}/`;
+  }
+
+  return null;
 }
 
 function requiredEnv(name: string): string {
