@@ -264,18 +264,42 @@ a {
   font-weight: 600;
 }
 
-.nav-links a:hover {
-  color: var(--text);
-}
-
 .mobile-nav {
   display: none;
   color: var(--muted);
   font-weight: 600;
 }
 
+.nav-links a,
+.mobile-nav a {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.24rem 0.62rem;
+  transition:
+    color 140ms ease,
+    background-color 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.nav-links a:hover,
 .mobile-nav a:hover {
   color: var(--text);
+  background: color-mix(in oklab, var(--accent) 10%, transparent);
+}
+
+.nav-links a.is-active,
+.mobile-nav a.is-active {
+  color: var(--text);
+  font-weight: 700;
+  background: color-mix(in oklab, var(--accent) 18%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--accent) 42%, transparent);
+}
+
+.nav-links a:focus-visible,
+.mobile-nav a:focus-visible {
+  outline: 2px solid color-mix(in oklab, var(--accent) 48%, transparent);
+  outline-offset: 2px;
 }
 
 .site-main {

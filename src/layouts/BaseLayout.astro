@@ -20,38 +20,81 @@ const canonical = new URL(Astro.url.pathname, site).toString();
 const ogImage = new URL(image, site).toString();
 
 const pathParts = Astro.url.pathname.split("/").filter(Boolean);
-const section = pathParts[0] === "en" || pathParts[0] === "ru" ? pathParts[0] : "root";
+const section: "root" | "en" | "ru" = pathParts[0] === "en" || pathParts[0] === "ru" ? pathParts[0] : "root";
 const lang = providedLang ?? (section === "ru" ? "ru" : "en");
 const ogLocale = lang === "ru" ? "ru_RU" : "en_US";
 
 const brandHref = section === "root" ? "/" : `/${section}/`;
 const rssHref = section === "root" ? "/rss.xml" : `/${section}/rss.xml`;
 
-const navLinks =
+type NavKey = "threads" | "search" | "calendar" | "about";
+
+interface NavItem {
+  href: string;
+  label: string;
+  key?: NavKey;
+}
+
+const normalizedPath = Astro.url.pathname.replace(/\/+$/, "") || "/";
+
+const activeNavKey: NavKey | null = (() => {
+  if (section === "en" || section === "ru") {
+    const prefix = `/${section}`;
+    if (normalizedPath === prefix || normalizedPath.startsWith(`${prefix}/blog/`)) {
+      return "threads";
+    }
+    if (normalizedPath === `${prefix}/search` || normalizedPath.startsWith(`${prefix}/search/`)) {
+      return "search";
+    }
+    if (normalizedPath === `${prefix}/calendar` || normalizedPath.startsWith(`${prefix}/calendar/`)) {
+      return "calendar";
+    }
+    if (normalizedPath === `${prefix}/about` || normalizedPath.startsWith(`${prefix}/about/`)) {
+      return "about";
+    }
+    return null;
+  }
+
+  if (normalizedPath === "/" || normalizedPath.startsWith("/blog/")) {
+    return "threads";
+  }
+  if (normalizedPath === "/search" || normalizedPath.startsWith("/search/")) {
+    return "search";
+  }
+  if (normalizedPath === "/calendar" || normalizedPath.startsWith("/calendar/")) {
+    return "calendar";
+  }
+  if (normalizedPath === "/about" || normalizedPath.startsWith("/about/")) {
+    return "about";
+  }
+  return null;
+})();
+
+const navLinks: NavItem[] =
   section === "ru"
     ? [
-        { href: "/ru/", label: "Треды" },
-        { href: "/ru/search/", label: "Поиск" },
-        { href: "/ru/calendar/", label: "Календарь" },
-        { href: "/ru/about/", label: "О тредах" },
+        { href: "/ru/", label: "Треды", key: "threads" },
+        { href: "/ru/search/", label: "Поиск", key: "search" },
+        { href: "/ru/calendar/", label: "Календарь", key: "calendar" },
+        { href: "/ru/about/", label: "О тредах", key: "about" },
         { href: "https://artempodcast.com", label: "Подкаст" },
         { href: "/en/", label: "EN" },
         { href: rssHref, label: "RSS" }
       ]
     : section === "en"
       ? [
-          { href: "/en/", label: "Threads" },
-          { href: "/en/search/", label: "Search" },
-          { href: "/en/calendar/", label: "Calendar" },
-          { href: "/en/about/", label: "About" },
+          { href: "/en/", label: "Threads", key: "threads" },
+          { href: "/en/search/", label: "Search", key: "search" },
+          { href: "/en/calendar/", label: "Calendar", key: "calendar" },
+          { href: "/en/about/", label: "About", key: "about" },
           { href: "https://artempodcast.com", label: "Podcast" },
           { href: "/ru/", label: "RU" },
           { href: rssHref, label: "RSS" }
         ]
       : [
-          { href: "/", label: "Threads" },
-          { href: "/search/", label: "Search" },
-          { href: "/calendar/", label: "Calendar" },
+          { href: "/", label: "Threads", key: "threads" },
+          { href: "/search/", label: "Search", key: "search" },
+          { href: "/calendar/", label: "Calendar", key: "calendar" },
           { href: "https://artempodcast.com", label: "Podcast" },
           { href: "/en/", label: "EN" },
           { href: "/ru/", label: "RU" },
@@ -117,6 +160,8 @@ const footerText =
           navLinks.map((item) => (
             <a
               href={item.href}
+              class={item.key === activeNavKey ? "is-active" : undefined}
+              aria-current={item.key === activeNavKey ? "page" : undefined}
               target={isExternalLink(item.href) ? "_blank" : undefined}
               rel={isExternalLink(item.href) ? "noopener" : undefined}
             >
@@ -136,6 +181,8 @@ const footerText =
         navLinks.map((item) => (
           <a
             href={item.href}
+            class={item.key === activeNavKey ? "is-active" : undefined}
+            aria-current={item.key === activeNavKey ? "page" : undefined}
             target={isExternalLink(item.href) ? "_blank" : undefined}
             rel={isExternalLink(item.href) ? "noopener" : undefined}
           >
