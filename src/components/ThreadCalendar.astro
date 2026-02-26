@@ -10,10 +10,11 @@ interface Props {
   entries: CalendarEntry[];
   lang?: "en" | "ru";
   title?: string;
+  showTitle?: boolean;
   description?: string;
 }
 
-const { entries = [], lang = "en", title } = Astro.props as Props;
+const { entries = [], lang = "en", title, showTitle = true } = Astro.props as Props;
 const isRu = lang === "ru";
 
 const labels = isRu
@@ -227,9 +228,13 @@ const serializedPayload = JSON.stringify(payload).replace(/</g, "\\u003c");
 ---
 
 <section class="calendar-explorer" data-calendar-explorer>
-  <header class="calendar-head">
-    <h1>{title ?? labels.title}</h1>
-  </header>
+  {
+    showTitle && (
+      <header class="calendar-head">
+        <h1>{title ?? labels.title}</h1>
+      </header>
+    )
+  }
 
   <div class="calendar-toolbar">
     <div class="calendar-zoom" role="tablist" aria-label={labels.zoom}>

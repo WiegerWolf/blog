@@ -1,6 +1,7 @@
 ---
 interface Props {
   heading: string;
+  showHeading?: boolean;
   description: string;
   filterPrefix?: string;
   placeholder: string;
@@ -15,6 +16,7 @@ interface Props {
 
 const {
   heading,
+  showHeading = true,
   description,
   filterPrefix = "",
   placeholder,
@@ -29,7 +31,7 @@ const {
 ---
 
 <section class="search-wrap" data-thread-search data-filter-prefix={filterPrefix}>
-  <h1>{heading}</h1>
+  {showHeading && <h1>{heading}</h1>}
   <p class="search-description">{description}</p>
 
   <form class="search-form" data-search-form>
