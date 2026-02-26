@@ -1,4 +1,6 @@
 ---
+import Icon from "./Icon.astro";
+
 interface Props {
   heading: string;
   showHeading?: boolean;
@@ -35,17 +37,25 @@ const {
   <p class="search-description">{description}</p>
 
   <form class="search-form" data-search-form>
-    <input
-      class="search-input"
-      type="search"
-      name="q"
-      autocomplete="off"
-      placeholder={placeholder}
-      required
-      minlength="2"
-      data-search-input
-    />
-    <button class="search-button" type="submit" data-search-submit>{submitLabel}</button>
+    <div class="search-input-wrap">
+      <span class="search-input-icon" aria-hidden="true">
+        <Icon name="search" size={16} />
+      </span>
+      <input
+        class="search-input"
+        type="search"
+        name="q"
+        autocomplete="off"
+        placeholder={placeholder}
+        required
+        minlength="2"
+        data-search-input
+      />
+    </div>
+    <button class="search-button" type="submit" data-search-submit>
+      <Icon class="search-button-icon" name="search" size={16} />
+      <span>{submitLabel}</span>
+    </button>
   </form>
 
   <p

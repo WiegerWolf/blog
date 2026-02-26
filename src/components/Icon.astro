@@ -1,0 +1,100 @@
+---
+type IconName =
+  | "threads"
+  | "search"
+  | "calendar"
+  | "info"
+  | "podcast"
+  | "language"
+  | "rss"
+  | "github"
+  | "youtube"
+  | "chart"
+  | "clock"
+  | "chevronLeft"
+  | "chevronRight"
+  | "spark";
+
+interface IconDefinition {
+  viewBox?: string;
+  paths: string[];
+}
+
+interface Props {
+  name: IconName;
+  size?: number | string;
+  title?: string;
+  class?: string;
+  strokeWidth?: number;
+}
+
+const icons: Record<IconName, IconDefinition> = {
+  threads: {
+    paths: ["M4 7h16", "M4 12h16", "M4 17h10"]
+  },
+  search: {
+    paths: ["M11 19a8 8 0 1 1 0-16 8 8 0 0 1 0 16", "m21 21-4.35-4.35"]
+  },
+  calendar: {
+    paths: ["M8 2v4", "M16 2v4", "M3 10h18", "M5 6h14a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2Z"]
+  },
+  info: {
+    paths: ["M12 17v-5", "M12 7h.01", "M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0Z"]
+  },
+  podcast: {
+    paths: ["M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z", "M19 10a7 7 0 0 1-14 0", "M12 19v3", "M8 22h8"]
+  },
+  language: {
+    paths: ["M3 12a9 9 0 1 0 18 0a9 9 0 0 0-18 0", "M3 12h18", "M12 3a13 13 0 0 1 0 18", "M12 3a13 13 0 0 0 0 18"]
+  },
+  rss: {
+    paths: ["M4 18h.01", "M4 11a9 9 0 0 1 9 9", "M4 4a16 16 0 0 1 16 16"]
+  },
+  github: {
+    paths: [
+      "M15 22v-4a4.8 4.8 0 0 0-1-3.2c3.4-.4 7-1.7 7-7.5a5.8 5.8 0 0 0-1.5-4 5.4 5.4 0 0 0-.1-4S18 0 15 2.3a13.4 13.4 0 0 0-7 0C5 0 4.6 0 4.6 0A5.4 5.4 0 0 0 4.5 3 5.8 5.8 0 0 0 3 7c0 5.8 3.6 7.1 7 7.5A4.8 4.8 0 0 0 9 18.2V22",
+      "M9 18c-5 1.5-5-2.5-7-3"
+    ]
+  },
+  youtube: {
+    paths: ["M2.3 8.7a2.4 2.4 0 0 1 1.7-1.7C5.6 6.5 8.5 6.5 12 6.5s6.4 0 8 .5a2.4 2.4 0 0 1 1.7 1.7c.5 1.6.5 2.8.5 3.3s0 1.7-.5 3.3a2.4 2.4 0 0 1-1.7 1.7c-1.6.5-4.5.5-8 .5s-6.4 0-8-.5a2.4 2.4 0 0 1-1.7-1.7c-.5-1.6-.5-2.8-.5-3.3s0-1.7.5-3.3", "m10 9.6 4.2 2.4L10 14.4Z"]
+  },
+  chart: {
+    paths: ["M4 19h16", "M6 16V9", "M12 16V5", "M18 16v-3"]
+  },
+  clock: {
+    paths: ["M12 6v6l4 2", "M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0Z"]
+  },
+  chevronLeft: {
+    paths: ["m15 18-6-6 6-6"]
+  },
+  chevronRight: {
+    paths: ["m9 18 6-6-6-6"]
+  },
+  spark: {
+    paths: ["M12 3l1.9 4.1L18 9l-4.1 1.9L12 15l-1.9-4.1L6 9l4.1-1.9Z"]
+  }
+};
+
+const { name, size = "1em", title, class: className = "", strokeWidth = 1.9 } = Astro.props as Props;
+const icon = icons[name] ?? icons.spark;
+const label = typeof title === "string" && title.trim().length > 0 ? title.trim() : undefined;
+---
+
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  class={className}
+  width={size}
+  height={size}
+  viewBox={icon.viewBox ?? "0 0 24 24"}
+  fill="none"
+  stroke="currentColor"
+  stroke-width={strokeWidth}
+  stroke-linecap="round"
+  stroke-linejoin="round"
+  role={label ? "img" : undefined}
+  aria-hidden={label ? undefined : "true"}
+  aria-label={label}
+>
+  {icon.paths.map((path) => <path d={path} />)}
+</svg>

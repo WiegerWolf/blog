@@ -274,8 +274,10 @@ a {
 .mobile-nav a {
   display: inline-flex;
   align-items: center;
+  gap: 0.42rem;
   border-radius: 999px;
   padding: 0.24rem 0.62rem;
+  line-height: 1;
   transition:
     color 140ms ease,
     background-color 140ms ease,
@@ -302,6 +304,38 @@ a {
   outline-offset: 2px;
 }
 
+.nav-link-icon {
+  width: 1rem;
+  height: 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: color-mix(in oklab, var(--muted) 88%, var(--text));
+  transition:
+    color 140ms ease,
+    transform 160ms ease;
+}
+
+.nav-link-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.nav-links a:hover .nav-link-icon,
+.mobile-nav a:hover .nav-link-icon {
+  color: var(--text);
+  transform: translateY(-1px);
+}
+
+.nav-links a.is-active .nav-link-icon,
+.mobile-nav a.is-active .nav-link-icon {
+  color: var(--accent);
+}
+
+.nav-link-label {
+  white-space: nowrap;
+}
+
 .site-main {
   padding: 1.2rem 0 2.8rem;
 }
@@ -312,14 +346,36 @@ a {
   padding-bottom: 2.4rem;
 }
 
-.site-footer a {
+.footer-links {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.46rem;
+}
+
+.footer-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.34rem;
   color: var(--muted);
+}
+
+.footer-link svg {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.footer-link span {
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 
-.site-footer a:hover {
+.footer-link:hover {
   color: var(--text);
+}
+
+.footer-sep {
+  opacity: 0.48;
 }
 
 .hero {
@@ -439,6 +495,9 @@ h2 {
   border: 0;
   background: transparent;
   color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32rem;
   font: inherit;
   font-size: 0.8rem;
   font-weight: 600;
@@ -456,6 +515,12 @@ h2 {
   background: var(--accent);
   color: #0c1016;
   font-weight: 700;
+}
+
+.calendar-zoom-icon {
+  width: 0.92rem;
+  height: 0.92rem;
+  flex-shrink: 0;
 }
 
 .calendar-context {
@@ -679,12 +744,21 @@ h2 {
   border-radius: 10px;
   background: var(--surface);
   color: var(--text);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
   font: inherit;
   font-size: 0.8rem;
   font-weight: 600;
   padding: 0.4rem 0.8rem;
   cursor: pointer;
   transition: all 140ms ease;
+}
+
+.calendar-nav-icon {
+  width: 0.9rem;
+  height: 0.9rem;
+  flex-shrink: 0;
 }
 
 .calendar-day-nav button:hover:not(:disabled) {
@@ -1102,8 +1176,30 @@ h2 {
   gap: 0.65rem;
 }
 
-.search-input {
+.search-input-wrap {
+  position: relative;
   flex: 1;
+  min-width: 0;
+}
+
+.search-input-icon {
+  position: absolute;
+  top: 50%;
+  left: 0.76rem;
+  width: 1rem;
+  height: 1rem;
+  color: var(--muted);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.search-input-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.search-input {
+  width: 100%;
   min-width: 0;
   height: 2.65rem;
   border: 1px solid var(--line);
@@ -1112,13 +1208,17 @@ h2 {
   color: var(--text);
   font: inherit;
   font-size: 1rem;
-  padding: 0 0.85rem;
+  padding: 0 0.85rem 0 2.3rem;
 }
 
 .search-input:focus {
   outline: 2px solid color-mix(in oklab, var(--accent) 38%, transparent);
   outline-offset: 1px;
   border-color: color-mix(in oklab, var(--accent) 46%, var(--line));
+}
+
+.search-input-wrap:focus-within .search-input-icon {
+  color: var(--accent);
 }
 
 .search-button {
@@ -1128,9 +1228,18 @@ h2 {
   border-radius: 12px;
   background: var(--surface-strong);
   color: var(--text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.38rem;
   font: inherit;
   font-weight: 700;
   cursor: pointer;
+}
+
+.search-button-icon {
+  width: 1rem;
+  height: 1rem;
 }
 
 .search-button:disabled {

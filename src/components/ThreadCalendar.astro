@@ -1,4 +1,6 @@
 ---
+import Icon from "./Icon.astro";
+
 interface CalendarEntry {
   pubDateIso: string;
   title?: string;
@@ -37,8 +39,8 @@ const labels = isRu
       noPostsInPeriod: "За этот период публикаций нет.",
       noPosts: "Пока нет публикаций",
       noPostsOnDay: "В этот день публикаций нет.",
-      prevDay: "← Пред. активный",
-      nextDay: "След. активный →",
+      prevDay: "Пред. активный",
+      nextDay: "След. активный",
       weekdays: ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
     }
   : {
@@ -60,8 +62,8 @@ const labels = isRu
       noPostsInPeriod: "No posts in this period.",
       noPosts: "No posts yet",
       noPostsOnDay: "No posts on this day.",
-      prevDay: "← Prev active",
-      nextDay: "Next active →",
+      prevDay: "Prev active",
+      nextDay: "Next active",
       weekdays: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
     };
 
@@ -238,9 +240,18 @@ const serializedPayload = JSON.stringify(payload).replace(/</g, "\\u003c");
 
   <div class="calendar-toolbar">
     <div class="calendar-zoom" role="tablist" aria-label={labels.zoom}>
-      <button type="button" data-calendar-zoom="month" class="is-active">{labels.zoomMonth}</button>
-      <button type="button" data-calendar-zoom="year">{labels.zoomYear}</button>
-      <button type="button" data-calendar-zoom="day">{labels.zoomDay}</button>
+      <button type="button" data-calendar-zoom="month" class="is-active">
+        <Icon name="calendar" size={14} class="calendar-zoom-icon" />
+        <span>{labels.zoomMonth}</span>
+      </button>
+      <button type="button" data-calendar-zoom="year">
+        <Icon name="chart" size={14} class="calendar-zoom-icon" />
+        <span>{labels.zoomYear}</span>
+      </button>
+      <button type="button" data-calendar-zoom="day">
+        <Icon name="clock" size={14} class="calendar-zoom-icon" />
+        <span>{labels.zoomDay}</span>
+      </button>
     </div>
 
     <div class="calendar-context">
@@ -339,6 +350,10 @@ const serializedPayload = JSON.stringify(payload).replace(/</g, "\\u003c");
     const monthNamesShort = Array.isArray(data.monthNamesShort) ? data.monthNamesShort : [];
     const weekdays = Array.isArray(data.weekdays) ? data.weekdays : ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
     const activeDayKeys = Object.keys(dayCounts).sort();
+    const chevronLeftIcon =
+      '<svg class="calendar-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg>';
+    const chevronRightIcon =
+      '<svg class="calendar-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg>';
 
     const escapeHtml = (value) =>
       String(value)
@@ -538,8 +553,8 @@ const serializedPayload = JSON.stringify(payload).replace(/</g, "\\u003c");
         `  <span>${dayPosts.length} ${escapeHtml(labels.posts || "posts")}</span>`,
         "</header>",
         '<div class="calendar-day-nav">',
-        `  <button type="button" data-day-nav="${escapeHtml(prevKey)}" ${prevKey ? "" : "disabled"}>${escapeHtml(labels.prevDay || "Prev")}</button>`,
-        `  <button type="button" data-day-nav="${escapeHtml(nextKey)}" ${nextKey ? "" : "disabled"}>${escapeHtml(labels.nextDay || "Next")}</button>`,
+        `  <button type="button" data-day-nav="${escapeHtml(prevKey)}" ${prevKey ? "" : "disabled"}>${chevronLeftIcon}<span>${escapeHtml(labels.prevDay || "Prev")}</span></button>`,
+        `  <button type="button" data-day-nav="${escapeHtml(nextKey)}" ${nextKey ? "" : "disabled"}><span>${escapeHtml(labels.nextDay || "Next")}</span>${chevronRightIcon}</button>`,
         "</div>"
       ].join("\n");
     };

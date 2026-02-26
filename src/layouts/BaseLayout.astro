@@ -1,5 +1,6 @@
 ---
 import "../styles/global.css";
+import Icon from "../components/Icon.astro";
 
 interface Props {
   title: string;
@@ -28,10 +29,12 @@ const brandHref = section === "root" ? "/" : `/${section}/`;
 const rssHref = section === "root" ? "/rss.xml" : `/${section}/rss.xml`;
 
 type NavKey = "threads" | "search" | "calendar" | "about";
+type NavIcon = "threads" | "search" | "calendar" | "info" | "podcast" | "language" | "rss";
 
 interface NavItem {
   href: string;
   label: string;
+  icon: NavIcon;
   key?: NavKey;
 }
 
@@ -73,32 +76,32 @@ const activeNavKey: NavKey | null = (() => {
 const navLinks: NavItem[] =
   section === "ru"
     ? [
-        { href: "/ru/", label: "Треды", key: "threads" },
-        { href: "/ru/search/", label: "Поиск", key: "search" },
-        { href: "/ru/calendar/", label: "Календарь", key: "calendar" },
-        { href: "/ru/about/", label: "О тредах", key: "about" },
-        { href: "https://artempodcast.com", label: "Подкаст" },
-        { href: "/en/", label: "EN" },
-        { href: rssHref, label: "RSS" }
+        { href: "/ru/", label: "Треды", icon: "threads", key: "threads" },
+        { href: "/ru/search/", label: "Поиск", icon: "search", key: "search" },
+        { href: "/ru/calendar/", label: "Календарь", icon: "calendar", key: "calendar" },
+        { href: "/ru/about/", label: "О тредах", icon: "info", key: "about" },
+        { href: "https://artempodcast.com", label: "Подкаст", icon: "podcast" },
+        { href: "/en/", label: "EN", icon: "language" },
+        { href: rssHref, label: "RSS", icon: "rss" }
       ]
     : section === "en"
       ? [
-          { href: "/en/", label: "Threads", key: "threads" },
-          { href: "/en/search/", label: "Search", key: "search" },
-          { href: "/en/calendar/", label: "Calendar", key: "calendar" },
-          { href: "/en/about/", label: "About", key: "about" },
-          { href: "https://artempodcast.com", label: "Podcast" },
-          { href: "/ru/", label: "RU" },
-          { href: rssHref, label: "RSS" }
+          { href: "/en/", label: "Threads", icon: "threads", key: "threads" },
+          { href: "/en/search/", label: "Search", icon: "search", key: "search" },
+          { href: "/en/calendar/", label: "Calendar", icon: "calendar", key: "calendar" },
+          { href: "/en/about/", label: "About", icon: "info", key: "about" },
+          { href: "https://artempodcast.com", label: "Podcast", icon: "podcast" },
+          { href: "/ru/", label: "RU", icon: "language" },
+          { href: rssHref, label: "RSS", icon: "rss" }
         ]
       : [
-          { href: "/", label: "Threads", key: "threads" },
-          { href: "/search/", label: "Search", key: "search" },
-          { href: "/calendar/", label: "Calendar", key: "calendar" },
-          { href: "https://artempodcast.com", label: "Podcast" },
-          { href: "/en/", label: "EN" },
-          { href: "/ru/", label: "RU" },
-          { href: rssHref, label: "RSS" }
+          { href: "/", label: "Threads", icon: "threads", key: "threads" },
+          { href: "/search/", label: "Search", icon: "search", key: "search" },
+          { href: "/calendar/", label: "Calendar", icon: "calendar", key: "calendar" },
+          { href: "https://artempodcast.com", label: "Podcast", icon: "podcast" },
+          { href: "/en/", label: "EN", icon: "language" },
+          { href: "/ru/", label: "RU", icon: "language" },
+          { href: rssHref, label: "RSS", icon: "rss" }
         ];
 
 const rssTitle =
@@ -106,10 +109,10 @@ const rssTitle =
 
 const isExternalLink = (href: string) => href.startsWith("http://") || href.startsWith("https://");
 
-const footerText =
-  lang === "ru"
-    ? `<a href="https://github.com/WiegerWolf/blog" target="_blank" rel="noopener">GitHub</a> • <a href="https://www.youtube.com/@ArtemPlays" target="_blank" rel="noopener">YouTube</a>`
-    : `<a href="https://github.com/WiegerWolf/blog" target="_blank" rel="noopener">GitHub</a> • <a href="https://www.youtube.com/@ArtemPlays" target="_blank" rel="noopener">YouTube</a>`;
+const footerLinks = [
+  { href: "https://github.com/WiegerWolf/blog", label: "GitHub", icon: "github" as const },
+  { href: "https://www.youtube.com/@ArtemPlays", label: "YouTube", icon: "youtube" as const }
+];
 ---
 
 <!doctype html>
@@ -165,7 +168,10 @@ const footerText =
               target={isExternalLink(item.href) ? "_blank" : undefined}
               rel={isExternalLink(item.href) ? "noopener" : undefined}
             >
-              {item.label}
+              <span class="nav-link-icon">
+                <Icon name={item.icon} size={16} />
+              </span>
+              <span class="nav-link-label">{item.label}</span>
             </a>
           ))
         }
@@ -186,14 +192,29 @@ const footerText =
             target={isExternalLink(item.href) ? "_blank" : undefined}
             rel={isExternalLink(item.href) ? "noopener" : undefined}
           >
-            {item.label}
+            <span class="nav-link-icon">
+              <Icon name={item.icon} size={16} />
+            </span>
+            <span class="nav-link-label">{item.label}</span>
           </a>
         ))
       }
     </nav>
 
     <footer class="site-shell site-footer">
-      <p set:html={footerText} />
+      <nav class="footer-links" aria-label={lang === "ru" ? "Ссылки в подвале" : "Footer links"}>
+        {
+          footerLinks.map((item, index) => (
+            <>
+              {index > 0 && <span class="footer-sep" aria-hidden="true">•</span>}
+              <a class="footer-link" href={item.href} target="_blank" rel="noopener">
+                <Icon name={item.icon} size={16} />
+                <span>{item.label}</span>
+              </a>
+            </>
+          ))
+        }
+      </nav>
     </footer>
 
     <div class="image-lightbox" data-image-lightbox hidden>
