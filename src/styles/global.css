@@ -1177,7 +1177,7 @@ h2 {
 }
 
 .post-related-grid {
-  margin-top: 1.15rem;
+  margin-top: clamp(2rem, 5vw, 2.8rem);
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
 }
 
