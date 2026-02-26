@@ -9,6 +9,8 @@ bun install
 bun run dev
 ```
 
+Note: full-text search index is generated only on production build (`bun run build`). Use `bun run preview` to test search locally.
+
 ## Write a post
 
 English posts live in `src/pages/en/blog/`.
@@ -68,6 +70,14 @@ Optional caption:
 - All posts RSS: `/rss.xml`
 - English RSS: `/en/rss.xml`
 - Russian RSS: `/ru/rss.xml`
+
+Search routes:
+
+- Global: `/search/`
+- English only: `/en/search/`
+- Russian only: `/ru/search/`
+
+Build generates a full-text Pagefind index into `dist/pagefind/`.
 
 ## Telegram publisher bot (Telegram → PR)
 

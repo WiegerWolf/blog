@@ -1,0 +1,20 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import ThreadSearch from "../../components/ThreadSearch.astro";
+---
+
+<BaseLayout lang="en" title="Search English Threads | Tsatsin" description="Full-text search across English threads.">
+  <ThreadSearch
+    heading="Search English Threads"
+    description="Find anything in English thread content."
+    placeholder="Search English threads..."
+    submitLabel="Search"
+    idleHint="Type at least 2 characters and press Search."
+    loadingLabel="Searching..."
+    emptyLabel="No matching English threads found."
+    errorLabel="Search index is unavailable. Run a production build to generate it."
+    openLabel="Open thread"
+    resultsLabel="results"
+    filterPrefix="/en/blog/"
+  />
+</BaseLayout>

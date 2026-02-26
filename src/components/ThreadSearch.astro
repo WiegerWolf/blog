@@ -1,0 +1,220 @@
+---
+interface Props {
+  heading: string;
+  description: string;
+  filterPrefix?: string;
+  placeholder: string;
+  submitLabel: string;
+  idleHint: string;
+  loadingLabel: string;
+  emptyLabel: string;
+  errorLabel: string;
+  openLabel: string;
+  resultsLabel?: string;
+}
+
+const {
+  heading,
+  description,
+  filterPrefix = "",
+  placeholder,
+  submitLabel,
+  idleHint,
+  loadingLabel,
+  emptyLabel,
+  errorLabel,
+  openLabel,
+  resultsLabel = "results"
+} = Astro.props as Props;
+---
+
+<section class="search-wrap" data-thread-search data-filter-prefix={filterPrefix}>
+  <h1>{heading}</h1>
+  <p class="search-description">{description}</p>
+
+  <form class="search-form" data-search-form>
+    <input
+      class="search-input"
+      type="search"
+      name="q"
+      autocomplete="off"
+      placeholder={placeholder}
+      required
+      minlength="2"
+      data-search-input
+    />
+    <button class="search-button" type="submit" data-search-submit>{submitLabel}</button>
+  </form>
+
+  <p
+    class="search-status"
+    data-search-status
+    data-idle={idleHint}
+    data-loading={loadingLabel}
+    data-empty={emptyLabel}
+    data-error={errorLabel}
+  >
+    {idleHint}
+  </p>
+
+  <div class="search-results" data-search-results data-open-label={openLabel}></div>
+  <span hidden data-search-results-label>{resultsLabel}</span>
+</section>
+
+<script is:inline>
+  (() => {
+    const root = document.querySelector("[data-thread-search]");
+    if (!(root instanceof HTMLElement)) {
+      return;
+    }
+
+    const form = root.querySelector("[data-search-form]");
+    const input = root.querySelector("[data-search-input]");
+    const submit = root.querySelector("[data-search-submit]");
+    const status = root.querySelector("[data-search-status]");
+    const results = root.querySelector("[data-search-results]");
+    const resultsLabelNode = root.querySelector("[data-search-results-label]");
+    const openLabel = results instanceof HTMLElement ? results.dataset.openLabel || "Open thread" : "Open thread";
+
+    if (
+      !(form instanceof HTMLFormElement) ||
+      !(input instanceof HTMLInputElement) ||
+      !(submit instanceof HTMLButtonElement) ||
+      !(status instanceof HTMLElement) ||
+      !(results instanceof HTMLElement) ||
+      !(resultsLabelNode instanceof HTMLElement)
+    ) {
+      return;
+    }
+
+    const filterPrefix = root.dataset.filterPrefix || "";
+    const labels = {
+      idle: status.dataset.idle || "Type to search.",
+      loading: status.dataset.loading || "Searching...",
+      empty: status.dataset.empty || "No results.",
+      error: status.dataset.error || "Search unavailable."
+    };
+
+    let currentRequestId = 0;
+    let pagefindPromise;
+
+    const setStatus = (text) => {
+      status.textContent = text;
+    };
+
+    const clearResults = () => {
+      results.replaceChildren();
+    };
+
+    const getPagefind = async () => {
+      if (!pagefindPromise) {
+        pagefindPromise = import("/pagefind/pagefind.js");
+      }
+
+      return pagefindPromise;
+    };
+
+    const isBlogResult = (url) => {
+      if (typeof url !== "string" || !url.includes("/blog/")) {
+        return false;
+      }
+
+      return !filterPrefix || url.startsWith(filterPrefix);
+    };
+
+    const buildResultItem = (item) => {
+      const link = document.createElement("a");
+      link.className = "thread-item search-result-item";
+      link.href = item.url;
+
+      const title = document.createElement("h2");
+      title.className = "thread-main search-result-title";
+      title.textContent = item.meta?.title || item.excerpt || item.url;
+
+      const excerpt = document.createElement("p");
+      excerpt.className = "search-result-excerpt";
+      excerpt.innerHTML = item.excerpt || "";
+
+      const open = document.createElement("p");
+      open.className = "thread-open";
+      open.textContent = `${openLabel} →`;
+
+      link.appendChild(title);
+      if (item.excerpt) {
+        link.appendChild(excerpt);
+      }
+      link.appendChild(open);
+
+      return link;
+    };
+
+    const updateUrlQuery = (query) => {
+      const nextUrl = new URL(window.location.href);
+      if (query) {
+        nextUrl.searchParams.set("q", query);
+      } else {
+        nextUrl.searchParams.delete("q");
+      }
+      window.history.replaceState({}, "", nextUrl);
+    };
+
+    const runSearch = async (query) => {
+      const normalized = query.trim();
+      updateUrlQuery(normalized);
+
+      if (normalized.length < 2) {
+        clearResults();
+        setStatus(labels.idle);
+        return;
+      }
+
+      const requestId = ++currentRequestId;
+      setStatus(labels.loading);
+      submit.disabled = true;
+
+      try {
+        const pagefind = await getPagefind();
+        const search = await pagefind.search(normalized);
+        const rawResults = await Promise.all(search.results.map((entry) => entry.data()));
+        const filtered = rawResults.filter((item) => isBlogResult(item.url));
+
+        if (requestId !== currentRequestId) {
+          return;
+        }
+
+        clearResults();
+        for (const item of filtered) {
+          results.appendChild(buildResultItem(item));
+        }
+
+        if (filtered.length === 0) {
+          setStatus(labels.empty);
+        } else {
+          setStatus(`${filtered.length} ${resultsLabelNode.textContent || "results"}`);
+        }
+      } catch {
+        if (requestId !== currentRequestId) {
+          return;
+        }
+
+        clearResults();
+        setStatus(labels.error);
+      } finally {
+        if (requestId === currentRequestId) {
+          submit.disabled = false;
+        }
+      }
+    };
+
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      void runSearch(input.value);
+    });
+
+    const initialQuery = new URLSearchParams(window.location.search).get("q") || "";
+    if (initialQuery) {
+      input.value = initialQuery;
+      void runSearch(initialQuery);
+    }
+  })();
+</script>

@@ -41,7 +41,7 @@ const publishedLabel = safePublished.toLocaleDateString(lang === "ru" ? "ru-RU" 
 ---
 
 <BaseLayout title={`${title} | Tsatsin Blog`} description={description} lang={lang}>
-  <article class="post-wrap">
+  <article class="post-wrap" data-pagefind-body>
     {
       showDate && (
         <p class="post-date">

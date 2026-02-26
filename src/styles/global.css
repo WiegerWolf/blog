@@ -665,12 +665,98 @@ h2 {
 }
 
 .about-panel,
-.post-wrap {
+.post-wrap,
+.search-wrap {
   background: var(--surface-strong);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   padding: clamp(1.2rem, 4vw, 2rem);
+}
+
+.search-wrap h1 {
+  margin: 0;
+  font-size: clamp(1.6rem, 4vw, 2.2rem);
+}
+
+.search-description {
+  margin: 0.5rem 0 1rem;
+  color: var(--muted);
+}
+
+.search-form {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.search-input {
+  flex: 1;
+  min-width: 0;
+  height: 2.65rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 1rem;
+  padding: 0 0.85rem;
+}
+
+.search-input:focus {
+  outline: 2px solid color-mix(in oklab, var(--accent) 38%, transparent);
+  outline-offset: 1px;
+  border-color: color-mix(in oklab, var(--accent) 46%, var(--line));
+}
+
+.search-button {
+  height: 2.65rem;
+  padding: 0 1rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-strong);
+  color: var(--text);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.search-button:disabled {
+  opacity: 0.65;
+  cursor: progress;
+}
+
+.search-status {
+  margin: 0.75rem 0 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.search-results {
+  margin-top: 0.9rem;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.search-result-item {
+  display: block;
+}
+
+.search-result-title {
+  margin-top: 0;
+}
+
+.search-result-excerpt {
+  margin: 0.55rem 0 0;
+  color: var(--muted);
+}
+
+.search-result-excerpt mark {
+  background: color-mix(in oklab, var(--accent-soft) 75%, white);
+  color: inherit;
+  border-radius: 4px;
+  padding: 0 0.1em;
 }
 
 .about-grid {
@@ -873,6 +959,15 @@ h2 {
     grid-template-columns: 1fr;
   }
 
+  .search-form {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .search-button {
+    width: 100%;
+  }
+
   .thread-preview img {
     min-height: 5rem;
   }
@@ -947,6 +1042,10 @@ h2 {
 
   .thread-single pre {
     background: rgba(0, 0, 0, 0.26);
+  }
+
+  .search-result-excerpt mark {
+    background: color-mix(in oklab, var(--accent-soft) 75%, black);
   }
 
   .post-prose .tg-spoiler {

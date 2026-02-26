@@ -1,0 +1,20 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import ThreadSearch from "../../components/ThreadSearch.astro";
+---
+
+<BaseLayout lang="ru" title="Поиск по тредам | Tsatsin" description="Полнотекстовый поиск по русским тредам.">
+  <ThreadSearch
+    heading="Поиск по русским тредам"
+    description="Ищите по полному тексту тредов."
+    placeholder="Поиск по русским тредам..."
+    submitLabel="Найти"
+    idleHint="Введите минимум 2 символа и нажмите Найти."
+    loadingLabel="Ищу..."
+    emptyLabel="Ничего не найдено."
+    errorLabel="Поисковый индекс недоступен. Нужна production-сборка."
+    openLabel="Открыть тред"
+    resultsLabel="результатов"
+    filterPrefix="/ru/blog/"
+  />
+</BaseLayout>

@@ -1,0 +1,20 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import ThreadSearch from "../components/ThreadSearch.astro";
+---
+
+<BaseLayout title="Search Threads | Tsatsin" description="Full-text search across Tsatsin threads.">
+  <ThreadSearch
+    heading="Search Threads"
+    description="Full-text search across all published threads."
+    placeholder="Search in EN and RU threads..."
+    submitLabel="Search"
+    idleHint="Type at least 2 characters and press Search."
+    loadingLabel="Searching..."
+    emptyLabel="No matching threads found."
+    errorLabel="Search index is unavailable. Run a production build to generate it."
+    openLabel="Open thread"
+    resultsLabel="results"
+    filterPrefix=""
+  />
+</BaseLayout>
