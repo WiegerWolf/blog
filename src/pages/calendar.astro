@@ -1,0 +1,23 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import ThreadCalendar from "../components/ThreadCalendar.astro";
+import { sortFeedItemsDesc, toThreadFeedItem, type ThreadModule } from "../lib/threadFeed";
+
+const modules = [
+  ...Object.values(import.meta.glob("./en/blog/*.md", { eager: true })),
+  ...Object.values(import.meta.glob("./ru/blog/*.md", { eager: true }))
+] as ThreadModule[];
+
+const allPosts = sortFeedItemsDesc(
+  modules.map((module) => toThreadFeedItem(module, module.url.startsWith("/ru/") ? "ru" : "en"))
+);
+---
+
+<BaseLayout title="Calendar | Tsatsin" description="Posting activity calendar for all threads.">
+  <ThreadCalendar
+    entries={allPosts}
+    lang="en"
+    title="Posting Calendar"
+    description="Switch zoom between year, month, and day to scan publishing activity quickly."
+  />
+</BaseLayout>

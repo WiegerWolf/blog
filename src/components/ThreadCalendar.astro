@@ -1,0 +1,691 @@
+---
+interface CalendarEntry {
+  pubDateIso: string;
+  title?: string;
+  url?: string;
+  lang?: "en" | "ru";
+}
+
+interface Props {
+  entries: CalendarEntry[];
+  lang?: "en" | "ru";
+  title?: string;
+  description?: string;
+}
+
+const { entries = [], lang = "en", title, description } = Astro.props as Props;
+const isRu = lang === "ru";
+
+const labels = isRu
+  ? {
+      title: "Календарь публикаций",
+      description: "Быстрый обзор активности по годам, месяцам и дням.",
+      today: "Сегодня",
+      thisMonth: "Этот месяц",
+      thisYear: "Этот год",
+      zoom: "Масштаб",
+      zoomYear: "Год",
+      zoomMonth: "Месяц",
+      zoomDay: "День",
+      year: "Год",
+      month: "Месяц",
+      day: "День",
+      posts: "постов",
+      noPosts: "Пока нет публикаций",
+      noPostsOnDay: "В этот день публикаций нет.",
+      prevDay: "← Пред. активный",
+      nextDay: "След. активный →",
+      weekdays: ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
+    }
+  : {
+      title: "Posting Calendar",
+      description: "Fast activity view by year, month, and day.",
+      today: "Today",
+      thisMonth: "This month",
+      thisYear: "This year",
+      zoom: "Zoom",
+      zoomYear: "Year",
+      zoomMonth: "Month",
+      zoomDay: "Day",
+      year: "Year",
+      month: "Month",
+      day: "Day",
+      posts: "posts",
+      noPosts: "No posts yet",
+      noPostsOnDay: "No posts on this day.",
+      prevDay: "← Prev active",
+      nextDay: "Next active →",
+      weekdays: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+    };
+
+const locale = isRu ? "ru-RU" : "en-US";
+
+function toDayKey(year: number, month: number, day: number): string {
+  return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+function toDayKeyFromDate(date: Date): string {
+  return toDayKey(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+}
+
+const now = new Date();
+const nowYear = now.getUTCFullYear();
+const nowMonth = now.getUTCMonth();
+const nowDay = now.getUTCDate();
+
+const posts = entries
+  .flatMap((entry) => {
+    const parsed = new Date(entry.pubDateIso);
+    if (Number.isNaN(parsed.getTime())) {
+      return [];
+    }
+
+    const year = parsed.getUTCFullYear();
+    const month = parsed.getUTCMonth();
+    const day = parsed.getUTCDate();
+    const dayKey = toDayKey(year, month, day);
+
+    return [
+      {
+        title: (entry.title ?? "").trim() || entry.url || dayKey,
+        url: entry.url || "#",
+        lang: entry.lang,
+        pubDateIso: parsed.toISOString(),
+        timeMs: parsed.getTime(),
+        year,
+        month,
+        day,
+        dayKey
+      }
+    ];
+  })
+  .sort((a, b) => b.timeMs - a.timeMs);
+
+const dayCounts: Record<string, number> = {};
+const postsByDay: Record<string, Array<{ title: string; url: string; lang?: "en" | "ru"; pubDateIso: string }>> = {};
+const monthCountsByYear: Record<string, number[]> = {};
+const langSet = new Set<string>();
+
+for (const post of posts) {
+  dayCounts[post.dayKey] = (dayCounts[post.dayKey] ?? 0) + 1;
+
+  if (!postsByDay[post.dayKey]) {
+    postsByDay[post.dayKey] = [];
+  }
+  postsByDay[post.dayKey].push({
+    title: post.title,
+    url: post.url,
+    lang: post.lang,
+    pubDateIso: post.pubDateIso
+  });
+
+  const yearKey = String(post.year);
+  const counts = monthCountsByYear[yearKey] ?? Array.from({ length: 12 }, () => 0);
+  counts[post.month] = (counts[post.month] ?? 0) + 1;
+  monthCountsByYear[yearKey] = counts;
+
+  if (post.lang) {
+    langSet.add(post.lang);
+  }
+}
+
+const years = Object.keys(monthCountsByYear)
+  .map((value) => Number.parseInt(value, 10))
+  .filter((value) => Number.isFinite(value))
+  .sort((a, b) => b - a);
+
+if (years.length === 0) {
+  years.push(nowYear);
+}
+
+function maxMonthForYear(year: number): number {
+  return year === nowYear ? nowMonth : 11;
+}
+
+function maxDayForMonth(year: number, month: number): number {
+  const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+  if (year === nowYear && month === nowMonth) {
+    return Math.min(daysInMonth, nowDay);
+  }
+  return daysInMonth;
+}
+
+function monthCount(year: number, month: number): number {
+  const yearCounts = monthCountsByYear[String(year)];
+  return yearCounts ? yearCounts[month] ?? 0 : 0;
+}
+
+function defaultMonthForYear(year: number): number {
+  const max = maxMonthForYear(year);
+  for (let month = max; month >= 0; month -= 1) {
+    if (monthCount(year, month) > 0) {
+      return month;
+    }
+  }
+  return max;
+}
+
+function defaultDayForMonth(year: number, month: number): number {
+  const max = maxDayForMonth(year, month);
+  for (let day = max; day >= 1; day -= 1) {
+    if ((dayCounts[toDayKey(year, month, day)] ?? 0) > 0) {
+      return day;
+    }
+  }
+  return max;
+}
+
+const defaultYear = years.includes(nowYear) ? nowYear : years[0];
+const defaultMonth = defaultMonthForYear(defaultYear);
+const defaultDay = defaultDayForMonth(defaultYear, defaultMonth);
+
+const todayKey = toDayKeyFromDate(now);
+const todayCount = dayCounts[todayKey] ?? 0;
+const thisMonthCount = monthCount(nowYear, nowMonth);
+const thisYearCount = (monthCountsByYear[String(nowYear)] ?? []).reduce((sum, count) => sum + count, 0);
+
+const monthLongFormatter = new Intl.DateTimeFormat(locale, { month: "long", timeZone: "UTC" });
+const monthShortFormatter = new Intl.DateTimeFormat(locale, { month: "short", timeZone: "UTC" });
+const monthNamesLong = Array.from({ length: 12 }, (_, month) =>
+  monthLongFormatter.format(new Date(Date.UTC(2000, month, 1)))
+);
+const monthNamesShort = Array.from({ length: 12 }, (_, month) =>
+  monthShortFormatter.format(new Date(Date.UTC(2000, month, 1)))
+);
+
+const payload = {
+  labels,
+  locale,
+  now: {
+    year: nowYear,
+    month: nowMonth,
+    day: nowDay
+  },
+  years,
+  dayCounts,
+  monthCountsByYear,
+  postsByDay,
+  monthNamesLong,
+  monthNamesShort,
+  weekdays: labels.weekdays,
+  defaultSelection: {
+    year: defaultYear,
+    month: defaultMonth,
+    day: defaultDay
+  },
+  hasMixedLang: langSet.size > 1,
+  noData: posts.length === 0
+};
+
+const serializedPayload = JSON.stringify(payload).replace(/</g, "\\u003c");
+---
+
+<section class="calendar-explorer" data-calendar-explorer>
+  <header class="calendar-head">
+    <h1>{title ?? labels.title}</h1>
+    <p>{description ?? labels.description}</p>
+  </header>
+
+  <div class="calendar-strip" aria-label="Calendar metrics">
+    <article class="calendar-kpi">
+      <p>{labels.today}</p>
+      <strong>{todayCount}</strong>
+    </article>
+    <article class="calendar-kpi">
+      <p>{labels.thisMonth}</p>
+      <strong>{thisMonthCount}</strong>
+    </article>
+    <article class="calendar-kpi">
+      <p>{labels.thisYear}</p>
+      <strong>{thisYearCount}</strong>
+    </article>
+  </div>
+
+  <div class="calendar-toolbar">
+    <div class="calendar-zoom" role="tablist" aria-label={labels.zoom}>
+      <button type="button" data-calendar-zoom="year" aria-pressed="true">{labels.zoomYear}</button>
+      <button type="button" data-calendar-zoom="month" aria-pressed="false">{labels.zoomMonth}</button>
+      <button type="button" data-calendar-zoom="day" aria-pressed="false">{labels.zoomDay}</button>
+    </div>
+
+    <div class="calendar-filters">
+      <label class="calendar-select-field">
+        <span>{labels.year}</span>
+        <select class="calendar-select" data-calendar-year></select>
+      </label>
+      <label class="calendar-select-field">
+        <span>{labels.month}</span>
+        <select class="calendar-select" data-calendar-month></select>
+      </label>
+      <label class="calendar-select-field">
+        <span>{labels.day}</span>
+        <select class="calendar-select" data-calendar-day></select>
+      </label>
+    </div>
+  </div>
+
+  <section class="calendar-pane" data-calendar-pane="year"></section>
+  <section class="calendar-pane" data-calendar-pane="month" hidden></section>
+  <section class="calendar-pane" data-calendar-pane="day" hidden></section>
+
+  <script is:inline type="application/json" data-calendar-data set:html={serializedPayload}></script>
+</section>
+
+<script is:inline>
+  (() => {
+    const root = document.querySelector("[data-calendar-explorer]");
+    if (!(root instanceof HTMLElement)) {
+      return;
+    }
+
+    const dataNode = root.querySelector("[data-calendar-data]");
+    const yearSelect = root.querySelector("[data-calendar-year]");
+    const monthSelect = root.querySelector("[data-calendar-month]");
+    const daySelect = root.querySelector("[data-calendar-day]");
+    const zoomButtons = Array.from(root.querySelectorAll("[data-calendar-zoom]"));
+    const yearPane = root.querySelector('[data-calendar-pane="year"]');
+    const monthPane = root.querySelector('[data-calendar-pane="month"]');
+    const dayPane = root.querySelector('[data-calendar-pane="day"]');
+
+    if (
+      !(dataNode instanceof HTMLScriptElement) ||
+      !(yearSelect instanceof HTMLSelectElement) ||
+      !(monthSelect instanceof HTMLSelectElement) ||
+      !(daySelect instanceof HTMLSelectElement) ||
+      !(yearPane instanceof HTMLElement) ||
+      !(monthPane instanceof HTMLElement) ||
+      !(dayPane instanceof HTMLElement)
+    ) {
+      return;
+    }
+
+    let data;
+    try {
+      data = JSON.parse(dataNode.textContent || "{}");
+    } catch {
+      return;
+    }
+
+    const labels = data.labels || {};
+    const years = Array.isArray(data.years) ? data.years.map((value) => Number(value)).filter(Number.isFinite) : [];
+    if (years.length === 0) {
+      return;
+    }
+
+    const monthTitleFormatter = new Intl.DateTimeFormat(data.locale || "en-US", {
+      year: "numeric",
+      month: "long",
+      timeZone: "UTC"
+    });
+    const dayTitleFormatter = new Intl.DateTimeFormat(data.locale || "en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      timeZone: "UTC"
+    });
+
+    const state = {
+      zoom: "year",
+      year: Number(data.defaultSelection?.year) || years[0],
+      month: Number(data.defaultSelection?.month) || 0,
+      day: Number(data.defaultSelection?.day) || 1
+    };
+
+    const monthCountsByYear = data.monthCountsByYear || {};
+    const dayCounts = data.dayCounts || {};
+    const postsByDay = data.postsByDay || {};
+    const monthNamesShort = Array.isArray(data.monthNamesShort) ? data.monthNamesShort : [];
+    const weekdays = Array.isArray(data.weekdays) ? data.weekdays : ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    const activeDayKeys = Object.keys(dayCounts).sort();
+
+    const escapeHtml = (value) =>
+      String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+
+    const toDayKey = (year, month, day) =>
+      `${String(year)}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+
+    const parseDayKey = (key) => {
+      const match = String(key).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (!match) {
+        return null;
+      }
+
+      return {
+        year: Number(match[1]),
+        month: Number(match[2]) - 1,
+        day: Number(match[3])
+      };
+    };
+
+    const maxMonthForYear = (year) => (year === data.now.year ? data.now.month : 11);
+
+    const maxDayForMonth = (year, month) => {
+      const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+      if (year === data.now.year && month === data.now.month) {
+        return Math.min(daysInMonth, data.now.day);
+      }
+      return daysInMonth;
+    };
+
+    const monthCount = (year, month) => {
+      const yearData = monthCountsByYear[String(year)];
+      return yearData ? Number(yearData[month] || 0) : 0;
+    };
+
+    const dayCount = (year, month, day) => Number(dayCounts[toDayKey(year, month, day)] || 0);
+
+    const intensityFromCount = (count) => {
+      if (count <= 0) return 0;
+      if (count === 1) return 1;
+      if (count === 2) return 2;
+      if (count <= 4) return 3;
+      return 4;
+    };
+
+    const clampSelection = () => {
+      if (!years.includes(state.year)) {
+        state.year = years[0];
+      }
+
+      state.month = Math.min(Math.max(state.month, 0), maxMonthForYear(state.year));
+      state.day = Math.min(Math.max(state.day, 1), maxDayForMonth(state.year, state.month));
+    };
+
+    const setZoom = (zoom) => {
+      state.zoom = zoom;
+
+      for (const button of zoomButtons) {
+        if (!(button instanceof HTMLButtonElement)) {
+          continue;
+        }
+        const active = button.dataset.calendarZoom === zoom;
+        button.setAttribute("aria-pressed", active ? "true" : "false");
+      }
+
+      yearPane.hidden = zoom !== "year";
+      monthPane.hidden = zoom !== "month";
+      dayPane.hidden = zoom !== "day";
+    };
+
+    const renderSelectors = () => {
+      clampSelection();
+
+      yearSelect.replaceChildren();
+      for (const year of years) {
+        const option = document.createElement("option");
+        option.value = String(year);
+        option.textContent = String(year);
+        yearSelect.appendChild(option);
+      }
+      yearSelect.value = String(state.year);
+
+      monthSelect.replaceChildren();
+      const maxMonth = maxMonthForYear(state.year);
+      for (let month = 0; month <= maxMonth; month += 1) {
+        const count = monthCount(state.year, month);
+        const option = document.createElement("option");
+        option.value = String(month);
+        option.textContent = `${monthNamesShort[month] || String(month + 1)}${count > 0 ? ` (${count})` : ""}`;
+        monthSelect.appendChild(option);
+      }
+      monthSelect.value = String(state.month);
+
+      daySelect.replaceChildren();
+      const maxDay = maxDayForMonth(state.year, state.month);
+      for (let day = 1; day <= maxDay; day += 1) {
+        const count = dayCount(state.year, state.month, day);
+        const option = document.createElement("option");
+        option.value = String(day);
+        option.textContent = `${day}${count > 0 ? ` (${count})` : ""}`;
+        daySelect.appendChild(option);
+      }
+      daySelect.value = String(state.day);
+    };
+
+    const renderYearPane = () => {
+      const maxMonth = maxMonthForYear(state.year);
+      const rows = [];
+      let maxCount = 0;
+      let yearTotal = 0;
+
+      for (let month = 0; month <= maxMonth; month += 1) {
+        const count = monthCount(state.year, month);
+        rows.push({ month, count });
+        yearTotal += count;
+        if (count > maxCount) {
+          maxCount = count;
+        }
+      }
+
+      const rowsHtml = rows
+        .map(({ month, count }) => {
+          const width = maxCount > 0 ? Math.round((count / maxCount) * 100) : 0;
+          const selectedClass = month === state.month ? " is-active" : "";
+          return [
+            `<button type="button" class="calendar-year-row${selectedClass}" data-month-jump="${month}">`,
+            `  <span class="calendar-year-label">${escapeHtml(monthNamesShort[month] || String(month + 1))}</span>`,
+            '  <span class="calendar-year-bar-wrap"><span class="calendar-year-bar" style="width: ' + width + '%"></span></span>',
+            `  <span class="calendar-year-count">${count}</span>`,
+            "</button>"
+          ].join("\n");
+        })
+        .join("\n");
+
+      yearPane.innerHTML = [
+        '<header class="calendar-pane-head">',
+        `  <strong>${escapeHtml(String(state.year))}</strong>`,
+        `  <span>${yearTotal} ${escapeHtml(labels.posts || "posts")}</span>`,
+        "</header>",
+        rows.length > 0 ? `<div class="calendar-year-list">${rowsHtml}</div>` : `<p class="calendar-empty">${escapeHtml(labels.noPosts || "No posts yet")}</p>`
+      ].join("\n");
+    };
+
+    const renderMonthPane = () => {
+      const maxDay = maxDayForMonth(state.year, state.month);
+      const firstWeekday = (new Date(Date.UTC(state.year, state.month, 1)).getUTCDay() + 6) % 7;
+      const monthTotal = monthCount(state.year, state.month);
+      const monthLabel = monthTitleFormatter.format(new Date(Date.UTC(state.year, state.month, 1)));
+
+      const weekdayCells = weekdays.map((weekday) => `<span>${escapeHtml(weekday)}</span>`).join("");
+      const cells = [];
+
+      for (let i = 0; i < firstWeekday; i += 1) {
+        cells.push('<span class="calendar-cell calendar-cell-empty" aria-hidden="true"></span>');
+      }
+
+      for (let day = 1; day <= maxDay; day += 1) {
+        const count = dayCount(state.year, state.month, day);
+        const level = intensityFromCount(count);
+        const selectedClass = day === state.day ? " is-active" : "";
+        cells.push(
+          [
+            `<button type="button" class="calendar-cell level-${level}${selectedClass}" data-day-jump="${day}" aria-label="${day}: ${count}">`,
+            `  <span class="calendar-cell-day">${day}</span>`,
+            count > 0 ? `  <span class="calendar-cell-count">${count}</span>` : "",
+            "</button>"
+          ].join("\n")
+        );
+      }
+
+      monthPane.innerHTML = [
+        '<header class="calendar-pane-head">',
+        `  <strong>${escapeHtml(monthLabel)}</strong>`,
+        `  <span>${monthTotal} ${escapeHtml(labels.posts || "posts")}</span>`,
+        "</header>",
+        `<div class="calendar-weekdays-row">${weekdayCells}</div>`,
+        `<div class="calendar-month-days">${cells.join("")}</div>`
+      ].join("\n");
+    };
+
+    const renderDayPane = () => {
+      const key = toDayKey(state.year, state.month, state.day);
+      const posts = Array.isArray(postsByDay[key]) ? postsByDay[key] : [];
+      const label = dayTitleFormatter.format(new Date(Date.UTC(state.year, state.month, state.day)));
+
+      let prevKey = "";
+      let nextKey = "";
+      for (const activeKey of activeDayKeys) {
+        if (activeKey < key) {
+          prevKey = activeKey;
+          continue;
+        }
+
+        if (activeKey > key) {
+          nextKey = activeKey;
+          break;
+        }
+      }
+
+      const dayItems = posts
+        .map((post) => {
+          const safeTitle = escapeHtml(post.title || post.url || key);
+          const safeUrl = escapeHtml(post.url || "#");
+          const langBadge =
+            data.hasMixedLang && post.lang
+              ? `<span class="calendar-day-lang" data-lang="${escapeHtml(post.lang)}">${escapeHtml(String(post.lang).toUpperCase())}</span>`
+              : "";
+
+          return [
+            `<a class="calendar-day-item" href="${safeUrl}">`,
+            `  <span class="calendar-day-item-title">${safeTitle}</span>`,
+            langBadge,
+            "</a>"
+          ].join("\n");
+        })
+        .join("\n");
+
+      dayPane.innerHTML = [
+        '<header class="calendar-day-head">',
+        `  <strong>${escapeHtml(label)}</strong>`,
+        `  <span>${posts.length} ${escapeHtml(labels.posts || "posts")}</span>`,
+        "</header>",
+        '<div class="calendar-day-nav">',
+        `  <button type="button" data-day-nav="${escapeHtml(prevKey)}" ${prevKey ? "" : "disabled"}>${escapeHtml(labels.prevDay || "Prev")}</button>`,
+        `  <button type="button" data-day-nav="${escapeHtml(nextKey)}" ${nextKey ? "" : "disabled"}>${escapeHtml(labels.nextDay || "Next")}</button>`,
+        "</div>",
+        posts.length > 0
+          ? `<div class="calendar-day-list">${dayItems}</div>`
+          : `<p class="calendar-empty">${escapeHtml(labels.noPostsOnDay || "No posts on this day.")}</p>`
+      ].join("\n");
+    };
+
+    const renderAll = () => {
+      renderSelectors();
+      setZoom(state.zoom);
+      renderYearPane();
+      renderMonthPane();
+      renderDayPane();
+    };
+
+    yearSelect.addEventListener("change", () => {
+      state.year = Number.parseInt(yearSelect.value, 10);
+      clampSelection();
+      renderAll();
+    });
+
+    monthSelect.addEventListener("change", () => {
+      state.month = Number.parseInt(monthSelect.value, 10);
+      clampSelection();
+      renderAll();
+    });
+
+    daySelect.addEventListener("change", () => {
+      state.day = Number.parseInt(daySelect.value, 10);
+      clampSelection();
+      renderAll();
+    });
+
+    for (const button of zoomButtons) {
+      if (!(button instanceof HTMLButtonElement)) {
+        continue;
+      }
+
+      button.addEventListener("click", () => {
+        const nextZoom = button.dataset.calendarZoom;
+        if (nextZoom === "year" || nextZoom === "month" || nextZoom === "day") {
+          state.zoom = nextZoom;
+          renderAll();
+        }
+      });
+    }
+
+    yearPane.addEventListener("click", (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) {
+        return;
+      }
+
+      const button = target.closest("[data-month-jump]");
+      if (!(button instanceof HTMLElement)) {
+        return;
+      }
+
+      const nextMonth = Number.parseInt(button.dataset.monthJump || "", 10);
+      if (!Number.isFinite(nextMonth)) {
+        return;
+      }
+
+      state.month = nextMonth;
+      state.zoom = "month";
+      clampSelection();
+      renderAll();
+    });
+
+    monthPane.addEventListener("click", (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) {
+        return;
+      }
+
+      const button = target.closest("[data-day-jump]");
+      if (!(button instanceof HTMLElement)) {
+        return;
+      }
+
+      const nextDay = Number.parseInt(button.dataset.dayJump || "", 10);
+      if (!Number.isFinite(nextDay)) {
+        return;
+      }
+
+      state.day = nextDay;
+      state.zoom = "day";
+      clampSelection();
+      renderAll();
+    });
+
+    dayPane.addEventListener("click", (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) {
+        return;
+      }
+
+      const button = target.closest("[data-day-nav]");
+      if (!(button instanceof HTMLElement)) {
+        return;
+      }
+
+      const key = button.dataset.dayNav;
+      if (!key) {
+        return;
+      }
+
+      const parsed = parseDayKey(key);
+      if (!parsed) {
+        return;
+      }
+
+      state.year = parsed.year;
+      state.month = parsed.month;
+      state.day = parsed.day;
+      clampSelection();
+      renderAll();
+    });
+
+    renderAll();
+  })();
+</script>

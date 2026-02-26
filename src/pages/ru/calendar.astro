@@ -1,0 +1,17 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import ThreadCalendar from "../../components/ThreadCalendar.astro";
+import { sortFeedItemsDesc, toThreadFeedItem, type ThreadModule } from "../../lib/threadFeed";
+
+const modules = Object.values(import.meta.glob("./blog/*.md", { eager: true })) as ThreadModule[];
+const allPosts = sortFeedItemsDesc(modules.map((module) => toThreadFeedItem(module, "ru")));
+---
+
+<BaseLayout lang="ru" title="Календарь | Tsatsin" description="Календарь активности публикаций на русском.">
+  <ThreadCalendar
+    entries={allPosts}
+    lang="ru"
+    title="Календарь русских тредов"
+    description="Режимы год / месяц / день для быстрого обзора активности."
+  />
+</BaseLayout>

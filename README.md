@@ -77,6 +77,12 @@ Search routes:
 - English only: `/en/search/`
 - Russian only: `/ru/search/`
 
+Calendar routes:
+
+- Global: `/calendar/`
+- English only: `/en/calendar/`
+- Russian only: `/ru/calendar/`
+
 Build generates a full-text Pagefind index into `dist/pagefind/`.
 
 ## Telegram publisher bot (Telegram → PR)
