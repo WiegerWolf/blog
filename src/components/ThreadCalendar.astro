@@ -13,7 +13,7 @@ interface Props {
   description?: string;
 }
 
-const { entries = [], lang = "en", title, description } = Astro.props as Props;
+const { entries = [], lang = "en", title } = Astro.props as Props;
 const isRu = lang === "ru";
 
 const labels = isRu
@@ -68,10 +68,6 @@ const locale = isRu ? "ru-RU" : "en-US";
 
 function toDayKey(year: number, month: number, day: number): string {
   return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-}
-
-function toDayKeyFromDate(date: Date): string {
-  return toDayKey(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
 }
 
 const now = new Date();
@@ -185,11 +181,6 @@ const defaultYear = years.includes(nowYear) ? nowYear : years[0];
 const defaultMonth = defaultMonthForYear(defaultYear);
 const defaultDay = defaultDayForMonth(defaultYear, defaultMonth);
 
-const todayKey = toDayKeyFromDate(now);
-const todayCount = dayCounts[todayKey] ?? 0;
-const thisMonthCount = monthCount(nowYear, nowMonth);
-const thisYearCount = (monthCountsByYear[String(nowYear)] ?? []).reduce((sum, count) => sum + count, 0);
-
 const monthLongFormatter = new Intl.DateTimeFormat(locale, { month: "long", timeZone: "UTC" });
 const monthShortFormatter = new Intl.DateTimeFormat(locale, { month: "short", timeZone: "UTC" });
 const monthNamesLong = Array.from({ length: 12 }, (_, month) =>
@@ -238,44 +229,18 @@ const serializedPayload = JSON.stringify(payload).replace(/</g, "\\u003c");
 <section class="calendar-explorer" data-calendar-explorer>
   <header class="calendar-head">
     <h1>{title ?? labels.title}</h1>
-    <p>{description ?? labels.description}</p>
   </header>
-
-  <div class="calendar-strip" aria-label="Calendar metrics">
-    <article class="calendar-kpi">
-      <p>{labels.today}</p>
-      <strong>{todayCount}</strong>
-    </article>
-    <article class="calendar-kpi">
-      <p>{labels.thisMonth}</p>
-      <strong>{thisMonthCount}</strong>
-    </article>
-    <article class="calendar-kpi">
-      <p>{labels.thisYear}</p>
-      <strong>{thisYearCount}</strong>
-    </article>
-  </div>
 
   <div class="calendar-toolbar">
     <div class="calendar-zoom" role="tablist" aria-label={labels.zoom}>
-      <button type="button" data-calendar-zoom="year" aria-pressed="true">{labels.zoomYear}</button>
-      <button type="button" data-calendar-zoom="month" aria-pressed="false">{labels.zoomMonth}</button>
-      <button type="button" data-calendar-zoom="day" aria-pressed="false">{labels.zoomDay}</button>
+      <button type="button" data-calendar-zoom="month" class="is-active">{labels.zoomMonth}</button>
+      <button type="button" data-calendar-zoom="year">{labels.zoomYear}</button>
+      <button type="button" data-calendar-zoom="day">{labels.zoomDay}</button>
     </div>
 
-    <div class="calendar-filters">
-      <label class="calendar-select-field">
-        <span>{labels.year}</span>
-        <select class="calendar-select" data-calendar-year></select>
-      </label>
-      <label class="calendar-select-field">
-        <span>{labels.month}</span>
-        <select class="calendar-select" data-calendar-month></select>
-      </label>
-      <label class="calendar-select-field">
-        <span>{labels.day}</span>
-        <select class="calendar-select" data-calendar-day></select>
-      </label>
+    <div class="calendar-context">
+      <select class="calendar-select" data-calendar-year></select>
+      <select class="calendar-select" data-calendar-month></select>
     </div>
   </div>
 
@@ -304,7 +269,6 @@ const serializedPayload = JSON.stringify(payload).replace(/</g, "\\u003c");
     const dataNode = root.querySelector("[data-calendar-data]");
     const yearSelect = root.querySelector("[data-calendar-year]");
     const monthSelect = root.querySelector("[data-calendar-month]");
-    const daySelect = root.querySelector("[data-calendar-day]");
     const zoomButtons = Array.from(root.querySelectorAll("[data-calendar-zoom]"));
     const yearPane = root.querySelector('[data-calendar-pane="year"]');
     const monthPane = root.querySelector('[data-calendar-pane="month"]');
@@ -316,7 +280,6 @@ const serializedPayload = JSON.stringify(payload).replace(/</g, "\\u003c");
       !(dataNode instanceof HTMLScriptElement) ||
       !(yearSelect instanceof HTMLSelectElement) ||
       !(monthSelect instanceof HTMLSelectElement) ||
-      !(daySelect instanceof HTMLSelectElement) ||
       !(yearPane instanceof HTMLElement) ||
       !(monthPane instanceof HTMLElement) ||
       !(dayPane instanceof HTMLElement) ||
@@ -358,10 +321,10 @@ const serializedPayload = JSON.stringify(payload).replace(/</g, "\\u003c");
     });
 
     const state = {
-      zoom: "year",
-      year: Number(data.defaultSelection?.year) || years[0],
-      month: Number(data.defaultSelection?.month) || 0,
-      day: Number(data.defaultSelection?.day) || 1
+      zoom: "month",
+      year: Number(data.now?.year) || years[0],
+      month: Number(data.now?.month) || 0,
+      day: Number(data.now?.day) || 1
     };
 
     const monthCountsByYear = data.monthCountsByYear || {};
@@ -438,7 +401,7 @@ const serializedPayload = JSON.stringify(payload).replace(/</g, "\\u003c");
           continue;
         }
         const active = button.dataset.calendarZoom === zoom;
-        button.setAttribute("aria-pressed", active ? "true" : "false");
+        button.classList.toggle("is-active", active);
       }
 
       yearPane.hidden = zoom !== "year";
@@ -468,17 +431,6 @@ const serializedPayload = JSON.stringify(payload).replace(/</g, "\\u003c");
         monthSelect.appendChild(option);
       }
       monthSelect.value = String(state.month);
-
-      daySelect.replaceChildren();
-      const maxDay = maxDayForMonth(state.year, state.month);
-      for (let day = 1; day <= maxDay; day += 1) {
-        const count = dayCount(state.year, state.month, day);
-        const option = document.createElement("option");
-        option.value = String(day);
-        option.textContent = `${day}${count > 0 ? ` (${count})` : ""}`;
-        daySelect.appendChild(option);
-      }
-      daySelect.value = String(state.day);
     };
 
     const renderYearPane = () => {
@@ -662,12 +614,7 @@ const serializedPayload = JSON.stringify(payload).replace(/</g, "\\u003c");
 
     monthSelect.addEventListener("change", () => {
       state.month = Number.parseInt(monthSelect.value, 10);
-      clampSelection();
-      renderAll();
-    });
-
-    daySelect.addEventListener("change", () => {
-      state.day = Number.parseInt(daySelect.value, 10);
+      state.day = 1;
       clampSelection();
       renderAll();
     });
