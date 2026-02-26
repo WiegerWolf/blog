@@ -1,5 +1,7 @@
 ---
 import BaseLayout from "./BaseLayout.astro";
+import type { ThreadModule } from "../lib/threadFeed";
+import { rankSimilarPosts } from "../lib/similarPosts";
 
 interface Frontmatter {
   title: string;
@@ -32,12 +34,48 @@ const showHeader = data.showHeader === true;
 const showDate = data.showDate !== false;
 const published = data.pubDate ? new Date(data.pubDate) : new Date();
 const safePublished = Number.isNaN(published.getTime()) ? new Date() : published;
-const publishedIso = safePublished.toISOString();
-const publishedLabel = safePublished.toLocaleDateString(lang === "ru" ? "ru-RU" : "en-US", {
+const locale = lang === "ru" ? "ru-RU" : "en-US";
+const dateOptions: Intl.DateTimeFormatOptions = {
   year: "numeric",
   month: "short",
   day: "numeric"
+};
+
+const publishedIso = safePublished.toISOString();
+const publishedLabel = safePublished.toLocaleDateString(locale, dateOptions);
+
+const enModules = Object.values(import.meta.glob("../pages/en/blog/*.md", { eager: true })) as ThreadModule[];
+const ruModules = Object.values(import.meta.glob("../pages/ru/blog/*.md", { eager: true })) as ThreadModule[];
+const sourceModules = lang === "ru" ? ruModules : enModules;
+
+const relatedPosts = rankSimilarPosts(
+  {
+    title,
+    description,
+    pubDate: safePublished,
+    url: Astro.url.pathname,
+    lang
+  },
+  sourceModules.map((module) => ({
+    title: module.frontmatter.title,
+    description: module.frontmatter.description,
+    pubDate: module.frontmatter.pubDate,
+    url: module.url,
+    lang,
+    previewImage: module.frontmatter.previewImages?.[0]
+  })),
+  3
+).map((post) => {
+  const postDate = new Date(post.pubDate);
+  const safePostDate = Number.isNaN(postDate.getTime()) ? safePublished : postDate;
+  return {
+    ...post,
+    dateIso: safePostDate.toISOString(),
+    dateLabel: safePostDate.toLocaleDateString(locale, dateOptions)
+  };
 });
+
+const relatedHeading = lang === "ru" ? "Что почитать еще" : "More to read";
 ---
 
 <BaseLayout title={`${title} | Tsatsin Blog`} description={description} lang={lang}>
@@ -60,5 +98,28 @@ const publishedLabel = safePublished.toLocaleDateString(lang === "ru" ? "ru-RU" 
     <div class="post-prose">
       <slot />
     </div>
+    {
+      relatedPosts.length > 0 && (
+        <section class="post-related" aria-label={relatedHeading}>
+          <h2 class="section-title">{relatedHeading}</h2>
+          <div class="post-grid post-related-grid">
+            {relatedPosts.map((post) => (
+              <a class="post-card post-related-item" href={post.url}>
+                {post.previewImage && (
+                  <div class="post-related-media">
+                    <img src={post.previewImage} alt={post.title} loading="lazy" decoding="async" />
+                  </div>
+                )}
+                <p class="card-date">
+                  <time datetime={post.dateIso}>{post.dateLabel}</time>
+                </p>
+                <h3>{post.title}</h3>
+                {post.description && <p class="post-related-description">{post.description}</p>}
+              </a>
+            ))}
+          </div>
+        </section>
+      )
+    }
   </article>
 </BaseLayout>

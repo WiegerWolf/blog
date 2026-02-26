@@ -1176,6 +1176,47 @@ h2 {
   margin-top: 1.2rem;
 }
 
+.post-related {
+  margin-top: 1.9rem;
+  padding-top: 1.1rem;
+  border-top: 1px solid var(--line);
+}
+
+.post-related-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+}
+
+.post-related-item {
+  background: var(--surface);
+}
+
+.post-related-media {
+  margin: -0.45rem -0.45rem 0.68rem;
+}
+
+.post-related-media img {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+}
+
+.post-related-item h3 {
+  margin: 0.45rem 0 0.5rem;
+  font-size: 1.02rem;
+  line-height: 1.34;
+}
+
+.post-related-description {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}
+
 .post-prose p,
 .post-prose li {
   max-width: 68ch;
@@ -1380,6 +1421,10 @@ h2 {
 
   .search-button {
     width: 100%;
+  }
+
+  .post-related-grid {
+    grid-template-columns: 1fr;
   }
 
   .thread-preview img {
