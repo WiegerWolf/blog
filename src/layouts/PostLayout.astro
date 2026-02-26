@@ -75,7 +75,7 @@ const relatedPosts = rankSimilarPosts(
   };
 });
 
-const relatedHeading = lang === "ru" ? "Что почитать еще" : "More to read";
+const relatedAriaLabel = lang === "ru" ? "Что почитать еще" : "More to read";
 ---
 
 <BaseLayout title={`${title} | Tsatsin Blog`} description={description} lang={lang}>
@@ -98,28 +98,25 @@ const relatedHeading = lang === "ru" ? "Что почитать еще" : "More 
     <div class="post-prose">
       <slot />
     </div>
-    {
-      relatedPosts.length > 0 && (
-        <section class="post-related" aria-label={relatedHeading}>
-          <h2 class="section-title">{relatedHeading}</h2>
-          <div class="post-grid post-related-grid">
-            {relatedPosts.map((post) => (
-              <a class="post-card post-related-item" href={post.url}>
-                {post.previewImage && (
-                  <div class="post-related-media">
-                    <img src={post.previewImage} alt={post.title} loading="lazy" decoding="async" />
-                  </div>
-                )}
-                <p class="card-date">
-                  <time datetime={post.dateIso}>{post.dateLabel}</time>
-                </p>
-                <h3>{post.title}</h3>
-                {post.description && <p class="post-related-description">{post.description}</p>}
-              </a>
-            ))}
-          </div>
-        </section>
-      )
-    }
   </article>
+  {
+    relatedPosts.length > 0 && (
+      <div class="post-grid post-related-grid" aria-label={relatedAriaLabel}>
+        {relatedPosts.map((post) => (
+          <a class="post-card post-related-item" href={post.url}>
+            <p class="card-date">
+              <time datetime={post.dateIso}>{post.dateLabel}</time>
+            </p>
+            <h3>{post.title}</h3>
+            {post.previewImage && (
+              <div class="post-related-media">
+                <img src={post.previewImage} alt={post.title} loading="lazy" decoding="async" />
+              </div>
+            )}
+            {post.description && <p class="post-related-description">{post.description}</p>}
+          </a>
+        ))}
+      </div>
+    )
+  }
 </BaseLayout>

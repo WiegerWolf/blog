@@ -1176,13 +1176,8 @@ h2 {
   margin-top: 1.2rem;
 }
 
-.post-related {
-  margin-top: 1.9rem;
-  padding-top: 1.1rem;
-  border-top: 1px solid var(--line);
-}
-
 .post-related-grid {
+  margin-top: 1.15rem;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
 }
 
@@ -1191,7 +1186,7 @@ h2 {
 }
 
 .post-related-media {
-  margin: -0.45rem -0.45rem 0.68rem;
+  margin: 0.58rem 0 0.72rem;
 }
 
 .post-related-media img {
