@@ -31,6 +31,9 @@ const labels = isRu
       month: "Месяц",
       day: "День",
       posts: "постов",
+      periodPosts: "Посты за период",
+      periodLabel: "Период",
+      noPostsInPeriod: "За этот период публикаций нет.",
       noPosts: "Пока нет публикаций",
       noPostsOnDay: "В этот день публикаций нет.",
       prevDay: "← Пред. активный",
@@ -51,6 +54,9 @@ const labels = isRu
       month: "Month",
       day: "Day",
       posts: "posts",
+      periodPosts: "Posts in period",
+      periodLabel: "Period",
+      noPostsInPeriod: "No posts in this period.",
       noPosts: "No posts yet",
       noPostsOnDay: "No posts on this day.",
       prevDay: "← Prev active",
@@ -205,6 +211,15 @@ const payload = {
   dayCounts,
   monthCountsByYear,
   postsByDay,
+  posts: posts.map((post) => ({
+    title: post.title,
+    url: post.url,
+    lang: post.lang,
+    pubDateIso: post.pubDateIso,
+    year: post.year,
+    month: post.month,
+    day: post.day
+  })),
   monthNamesLong,
   monthNamesShort,
   weekdays: labels.weekdays,
@@ -268,6 +283,14 @@ const serializedPayload = JSON.stringify(payload).replace(/</g, "\\u003c");
   <section class="calendar-pane" data-calendar-pane="month" hidden></section>
   <section class="calendar-pane" data-calendar-pane="day" hidden></section>
 
+  <section class="calendar-period" aria-live="polite">
+    <header class="calendar-period-head">
+      <h2>{labels.periodPosts}</h2>
+      <p data-calendar-period-label></p>
+    </header>
+    <div class="calendar-period-list" data-calendar-period-list></div>
+  </section>
+
   <script is:inline type="application/json" data-calendar-data set:html={serializedPayload}></script>
 </section>
 
@@ -286,6 +309,8 @@ const serializedPayload = JSON.stringify(payload).replace(/</g, "\\u003c");
     const yearPane = root.querySelector('[data-calendar-pane="year"]');
     const monthPane = root.querySelector('[data-calendar-pane="month"]');
     const dayPane = root.querySelector('[data-calendar-pane="day"]');
+    const periodLabel = root.querySelector("[data-calendar-period-label]");
+    const periodList = root.querySelector("[data-calendar-period-list]");
 
     if (
       !(dataNode instanceof HTMLScriptElement) ||
@@ -294,7 +319,9 @@ const serializedPayload = JSON.stringify(payload).replace(/</g, "\\u003c");
       !(daySelect instanceof HTMLSelectElement) ||
       !(yearPane instanceof HTMLElement) ||
       !(monthPane instanceof HTMLElement) ||
-      !(dayPane instanceof HTMLElement)
+      !(dayPane instanceof HTMLElement) ||
+      !(periodLabel instanceof HTMLElement) ||
+      !(periodList instanceof HTMLElement)
     ) {
       return;
     }
@@ -323,6 +350,12 @@ const serializedPayload = JSON.stringify(payload).replace(/</g, "\\u003c");
       day: "numeric",
       timeZone: "UTC"
     });
+    const compactDateFormatter = new Intl.DateTimeFormat(data.locale || "en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      timeZone: "UTC"
+    });
 
     const state = {
       zoom: "year",
@@ -334,6 +367,7 @@ const serializedPayload = JSON.stringify(payload).replace(/</g, "\\u003c");
     const monthCountsByYear = data.monthCountsByYear || {};
     const dayCounts = data.dayCounts || {};
     const postsByDay = data.postsByDay || {};
+    const posts = Array.isArray(data.posts) ? data.posts : [];
     const monthNamesShort = Array.isArray(data.monthNamesShort) ? data.monthNamesShort : [];
     const weekdays = Array.isArray(data.weekdays) ? data.weekdays : ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
     const activeDayKeys = Object.keys(dayCounts).sort();
@@ -524,7 +558,7 @@ const serializedPayload = JSON.stringify(payload).replace(/</g, "\\u003c");
 
     const renderDayPane = () => {
       const key = toDayKey(state.year, state.month, state.day);
-      const posts = Array.isArray(postsByDay[key]) ? postsByDay[key] : [];
+      const dayPosts = Array.isArray(postsByDay[key]) ? postsByDay[key] : [];
       const label = dayTitleFormatter.format(new Date(Date.UTC(state.year, state.month, state.day)));
 
       let prevKey = "";
@@ -541,10 +575,58 @@ const serializedPayload = JSON.stringify(payload).replace(/</g, "\\u003c");
         }
       }
 
-      const dayItems = posts
+      dayPane.innerHTML = [
+        '<header class="calendar-day-head">',
+        `  <strong>${escapeHtml(label)}</strong>`,
+        `  <span>${dayPosts.length} ${escapeHtml(labels.posts || "posts")}</span>`,
+        "</header>",
+        '<div class="calendar-day-nav">',
+        `  <button type="button" data-day-nav="${escapeHtml(prevKey)}" ${prevKey ? "" : "disabled"}>${escapeHtml(labels.prevDay || "Prev")}</button>`,
+        `  <button type="button" data-day-nav="${escapeHtml(nextKey)}" ${nextKey ? "" : "disabled"}>${escapeHtml(labels.nextDay || "Next")}</button>`,
+        "</div>"
+      ].join("\n");
+    };
+
+    const postsInCurrentPeriod = () => {
+      if (state.zoom === "year") {
+        return posts.filter((post) => post.year === state.year);
+      }
+
+      if (state.zoom === "month") {
+        return posts.filter((post) => post.year === state.year && post.month === state.month);
+      }
+
+      return posts.filter((post) => post.year === state.year && post.month === state.month && post.day === state.day);
+    };
+
+    const currentPeriodLabel = () => {
+      if (state.zoom === "year") {
+        return `${labels.zoomYear || "Year"}: ${state.year}`;
+      }
+
+      if (state.zoom === "month") {
+        const monthLabel = monthTitleFormatter.format(new Date(Date.UTC(state.year, state.month, 1)));
+        return `${labels.zoomMonth || "Month"}: ${monthLabel}`;
+      }
+
+      const dayLabel = dayTitleFormatter.format(new Date(Date.UTC(state.year, state.month, state.day)));
+      return `${labels.zoomDay || "Day"}: ${dayLabel}`;
+    };
+
+    const renderPeriodList = () => {
+      const scopedPosts = postsInCurrentPeriod();
+      periodLabel.textContent = `${labels.periodLabel || "Period"}: ${currentPeriodLabel()} · ${scopedPosts.length} ${labels.posts || "posts"}`;
+
+      if (scopedPosts.length === 0) {
+        periodList.innerHTML = `<p class="calendar-empty">${escapeHtml(labels.noPostsInPeriod || labels.noPosts || "No posts")}</p>`;
+        return;
+      }
+
+      const rows = scopedPosts
         .map((post) => {
-          const safeTitle = escapeHtml(post.title || post.url || key);
+          const safeTitle = escapeHtml(post.title || post.url || "Untitled");
           const safeUrl = escapeHtml(post.url || "#");
+          const safeDate = escapeHtml(compactDateFormatter.format(new Date(post.pubDateIso)));
           const langBadge =
             data.hasMixedLang && post.lang
               ? `<span class="calendar-day-lang" data-lang="${escapeHtml(post.lang)}">${escapeHtml(String(post.lang).toUpperCase())}</span>`
@@ -553,25 +635,14 @@ const serializedPayload = JSON.stringify(payload).replace(/</g, "\\u003c");
           return [
             `<a class="calendar-day-item" href="${safeUrl}">`,
             `  <span class="calendar-day-item-title">${safeTitle}</span>`,
+            `  <span class="calendar-period-date">${safeDate}</span>`,
             langBadge,
             "</a>"
           ].join("\n");
         })
         .join("\n");
 
-      dayPane.innerHTML = [
-        '<header class="calendar-day-head">',
-        `  <strong>${escapeHtml(label)}</strong>`,
-        `  <span>${posts.length} ${escapeHtml(labels.posts || "posts")}</span>`,
-        "</header>",
-        '<div class="calendar-day-nav">',
-        `  <button type="button" data-day-nav="${escapeHtml(prevKey)}" ${prevKey ? "" : "disabled"}>${escapeHtml(labels.prevDay || "Prev")}</button>`,
-        `  <button type="button" data-day-nav="${escapeHtml(nextKey)}" ${nextKey ? "" : "disabled"}>${escapeHtml(labels.nextDay || "Next")}</button>`,
-        "</div>",
-        posts.length > 0
-          ? `<div class="calendar-day-list">${dayItems}</div>`
-          : `<p class="calendar-empty">${escapeHtml(labels.noPostsOnDay || "No posts on this day.")}</p>`
-      ].join("\n");
+      periodList.innerHTML = `<div class="calendar-day-list">${rows}</div>`;
     };
 
     const renderAll = () => {
@@ -580,6 +651,7 @@ const serializedPayload = JSON.stringify(payload).replace(/</g, "\\u003c");
       renderYearPane();
       renderMonthPane();
       renderDayPane();
+      renderPeriodList();
     };
 
     yearSelect.addEventListener("change", () => {

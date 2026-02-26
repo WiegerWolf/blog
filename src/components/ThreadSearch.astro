@@ -97,6 +97,9 @@ const {
 
     let currentRequestId = 0;
     let pagefindPromise;
+    let debounceTimer = null;
+    let isComposing = false;
+    let lastTriggeredQuery = "";
 
     const setStatus = (text) => {
       status.textContent = text;
@@ -160,6 +163,7 @@ const {
 
     const runSearch = async (query) => {
       const normalized = query.trim();
+      lastTriggeredQuery = normalized;
       updateUrlQuery(normalized);
 
       if (normalized.length < 2) {
@@ -206,8 +210,47 @@ const {
       }
     };
 
+    const scheduleSearch = (query) => {
+      if (debounceTimer !== null) {
+        window.clearTimeout(debounceTimer);
+      }
+
+      debounceTimer = window.setTimeout(() => {
+        debounceTimer = null;
+        const normalized = query.trim();
+        if (normalized === lastTriggeredQuery) {
+          return;
+        }
+        void runSearch(query);
+      }, 200);
+    };
+
+    input.addEventListener("compositionstart", () => {
+      isComposing = true;
+      if (debounceTimer !== null) {
+        window.clearTimeout(debounceTimer);
+        debounceTimer = null;
+      }
+    });
+
+    input.addEventListener("compositionend", () => {
+      isComposing = false;
+      scheduleSearch(input.value);
+    });
+
+    input.addEventListener("input", () => {
+      if (isComposing) {
+        return;
+      }
+      scheduleSearch(input.value);
+    });
+
     form.addEventListener("submit", (event) => {
       event.preventDefault();
+      if (debounceTimer !== null) {
+        window.clearTimeout(debounceTimer);
+        debounceTimer = null;
+      }
       void runSearch(input.value);
     });
 

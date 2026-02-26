@@ -704,9 +704,9 @@ h2 {
 }
 
 .calendar-day-item {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
-  justify-content: space-between;
   gap: 0.55rem;
   border: 1px solid var(--line);
   border-radius: 9px;
@@ -718,6 +718,13 @@ h2 {
   font-size: 0.86rem;
   font-weight: 700;
   line-height: 1.35;
+  min-width: 0;
+}
+
+.calendar-period-date {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
 }
 
 .calendar-day-lang {
@@ -740,6 +747,38 @@ h2 {
   margin: 0;
   color: var(--muted);
   font-size: 0.86rem;
+}
+
+.calendar-period {
+  margin-top: 0.65rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0.58rem;
+}
+
+.calendar-period-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin-bottom: 0.46rem;
+}
+
+.calendar-period-head h2 {
+  margin: 0;
+  font-size: 0.98rem;
+}
+
+.calendar-period-head p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.calendar-period-list {
+  display: grid;
+  gap: 0.34rem;
 }
 
 .post-grid {
@@ -1372,7 +1411,16 @@ h2 {
   }
 
   .calendar-day-item {
+    grid-template-columns: minmax(0, 1fr) auto;
     align-items: flex-start;
+  }
+
+  .calendar-period-date {
+    grid-column: 2;
+  }
+
+  .calendar-day-lang {
+    grid-column: 2;
   }
 }
 
