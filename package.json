@@ -9,7 +9,8 @@
     "build": "astro build && pagefind --site dist",
     "preview": "astro preview",
     "check": "astro check",
-    "tg:bot": "bun run scripts/telegram-publisher/bot.ts"
+    "tg:bot": "bun run scripts/telegram-publisher/bot.ts",
+    "tg:backfill-comments": "bun run scripts/telegram-publisher/backfill-channel.ts"
   },
   "dependencies": {
     "@astrojs/rss": "^4.0.12",

@@ -189,6 +189,36 @@ Optional variables:
 - `PUBLIC_CHANNEL_DISABLE_NOTIFICATION` (default: `true`)
 - `PUBLIC_SITE_URL` (optional explicit base URL used in bot publish messages)
 
+### One-off backfill for old posts (Telegram comments)
+
+If you already have old posts without `telegramPostUrl`, run a one-off backfill.
+
+The script will:
+
+- scan `src/pages/en/blog/*.md` and `src/pages/ru/blog/*.md`
+- skip posts that already have `telegramPostUrl`
+- publish each missing post to your public Telegram channel
+- write `telegramPostUrl` into frontmatter for each post
+- keep checkpoint state in `publisher-data/backfill-telegram-comments-state.json` for safe resume
+
+Run dry-run first:
+
+```bash
+bun run tg:backfill-comments --dry-run
+```
+
+Then run full backfill:
+
+```bash
+bun run tg:backfill-comments
+```
+
+Useful flags:
+
+- `--limit 10` - process first N missing posts
+- `--delay-ms 1500` - delay between Telegram posts (default `1200`)
+- `--reset-state` - clear checkpoint state and start from scratch
+
 ### Run bot on home server (Docker)
 
 ```bash
