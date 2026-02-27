@@ -13,6 +13,8 @@ type IconName =
   | "clock"
   | "chevronLeft"
   | "chevronRight"
+  | "menu"
+  | "close"
   | "spark";
 
 interface IconDefinition {
@@ -70,6 +72,12 @@ const icons: Record<IconName, IconDefinition> = {
   },
   chevronRight: {
     paths: ["m9 18 6-6-6-6"]
+  },
+  menu: {
+    paths: ["M4 7h16", "M4 12h16", "M4 17h16"]
+  },
+  close: {
+    paths: ["m18 6-12 12", "m6 6 12 12"]
   },
   spark: {
     paths: ["M12 3l1.9 4.1L18 9l-4.1 1.9L12 15l-1.9-4.1L6 9l4.1-1.9Z"]

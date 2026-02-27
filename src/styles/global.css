@@ -36,7 +36,8 @@ body {
   overflow-x: hidden;
 }
 
-body.lightbox-open {
+body.lightbox-open,
+body.menu-open {
   overflow: hidden;
 }
 
@@ -264,14 +265,30 @@ a {
   font-weight: 600;
 }
 
-.mobile-nav {
+.mobile-menu-toggle {
   display: none;
-  color: var(--muted);
-  font-weight: 600;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in oklab, var(--line) 82%, var(--text));
+  background: color-mix(in oklab, var(--surface-strong) 86%, transparent);
+  color: var(--text);
+  cursor: pointer;
+  transition:
+    background-color 140ms ease,
+    border-color 140ms ease,
+    transform 160ms ease;
+}
+
+.mobile-menu-toggle:hover {
+  background: color-mix(in oklab, var(--accent) 12%, var(--surface-strong));
+  border-color: color-mix(in oklab, var(--accent) 36%, var(--line));
 }
 
 .nav-links a,
-.mobile-nav a {
+.mobile-menu-links a {
   display: inline-flex;
   align-items: center;
   gap: 0.42rem;
@@ -285,13 +302,13 @@ a {
 }
 
 .nav-links a:hover,
-.mobile-nav a:hover {
+.mobile-menu-links a:hover {
   color: var(--text);
   background: color-mix(in oklab, var(--accent) 10%, transparent);
 }
 
 .nav-links a.is-active,
-.mobile-nav a.is-active {
+.mobile-menu-links a.is-active {
   color: var(--text);
   font-weight: 700;
   background: color-mix(in oklab, var(--accent) 18%, transparent);
@@ -299,7 +316,9 @@ a {
 }
 
 .nav-links a:focus-visible,
-.mobile-nav a:focus-visible {
+.mobile-menu-links a:focus-visible,
+.mobile-menu-toggle:focus-visible,
+.mobile-menu-close:focus-visible {
   outline: 2px solid color-mix(in oklab, var(--accent) 48%, transparent);
   outline-offset: 2px;
 }
@@ -322,14 +341,71 @@ a {
 }
 
 .nav-links a:hover .nav-link-icon,
-.mobile-nav a:hover .nav-link-icon {
+.mobile-menu-links a:hover .nav-link-icon {
   color: var(--text);
   transform: translateY(-1px);
 }
 
 .nav-links a.is-active .nav-link-icon,
-.mobile-nav a.is-active .nav-link-icon {
+.mobile-menu-links a.is-active .nav-link-icon {
   color: var(--accent);
+}
+
+.mobile-menu {
+  position: fixed;
+  inset: 0;
+  z-index: 14;
+}
+
+.mobile-menu-backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(12, 18, 28, 0.48);
+  backdrop-filter: blur(2px);
+}
+
+.mobile-menu-panel {
+  position: relative;
+  margin-top: 1rem;
+  background: color-mix(in oklab, var(--surface-strong) 92%, transparent);
+  border: 1px solid color-mix(in oklab, var(--line) 88%, var(--text));
+  border-radius: 20px;
+  padding: 1rem;
+  box-shadow: 0 22px 46px rgba(12, 18, 28, 0.24);
+}
+
+.mobile-menu-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  margin-bottom: 0.65rem;
+}
+
+.mobile-menu-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in oklab, var(--line) 82%, var(--text));
+  background: color-mix(in oklab, var(--surface) 92%, transparent);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.mobile-menu-links {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.mobile-menu-links a {
+  justify-content: flex-start;
+  padding: 0.66rem 0.78rem;
+  width: 100%;
 }
 
 .nav-link-label {
@@ -1645,20 +1721,20 @@ a.tag-chip:hover {
 
 @media (max-width: 680px) {
   .site-header {
-    flex-direction: column;
-    align-items: flex-start;
+    flex-direction: row;
+    align-items: center;
   }
 
   .nav-links {
     display: none;
   }
 
-  .mobile-nav {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 0.9rem;
-    padding: 0 0 1.1rem;
+  .mobile-menu-toggle {
+    display: inline-flex;
+  }
+
+  .mobile-menu-panel {
+    width: min(960px, 92vw);
   }
 
   .about-grid {

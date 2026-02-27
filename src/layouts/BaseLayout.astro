@@ -113,6 +113,10 @@ const footerLinks = [
   { href: "https://github.com/WiegerWolf/blog", label: "GitHub", icon: "github" as const },
   { href: "https://www.youtube.com/@ArtemPlays", label: "YouTube", icon: "youtube" as const }
 ];
+
+const mobileMenuLabel = lang === "ru" ? "Мобильное меню" : "Mobile menu";
+const openMenuLabel = lang === "ru" ? "Открыть меню" : "Open menu";
+const closeMenuLabel = lang === "ru" ? "Закрыть меню" : "Close menu";
 ---
 
 <!doctype html>
@@ -176,30 +180,51 @@ const footerLinks = [
           ))
         }
       </nav>
+      <button
+        class="mobile-menu-toggle"
+        type="button"
+        aria-label={openMenuLabel}
+        aria-expanded="false"
+        aria-controls="mobile-menu-panel"
+        data-mobile-menu-toggle
+      >
+        <Icon name="menu" size={18} />
+      </button>
     </header>
+
+    <div class="mobile-menu" data-mobile-menu hidden>
+      <button class="mobile-menu-backdrop" type="button" aria-label={closeMenuLabel} data-mobile-menu-close></button>
+      <nav class="site-shell mobile-menu-panel" id="mobile-menu-panel" aria-label={mobileMenuLabel}>
+        <div class="mobile-menu-head">
+          <a class="brand" href={brandHref}>Tsatsin</a>
+          <button class="mobile-menu-close" type="button" aria-label={closeMenuLabel} data-mobile-menu-close>
+            <Icon name="close" size={18} />
+          </button>
+        </div>
+        <div class="mobile-menu-links">
+          {
+            navLinks.map((item) => (
+              <a
+                href={item.href}
+                class={item.key === activeNavKey ? "is-active" : undefined}
+                aria-current={item.key === activeNavKey ? "page" : undefined}
+                target={isExternalLink(item.href) ? "_blank" : undefined}
+                rel={isExternalLink(item.href) ? "noopener" : undefined}
+              >
+                <span class="nav-link-icon">
+                  <Icon name={item.icon} size={16} />
+                </span>
+                <span class="nav-link-label">{item.label}</span>
+              </a>
+            ))
+          }
+        </div>
+      </nav>
+    </div>
 
     <main class="site-shell site-main">
       <slot />
     </main>
-
-    <nav class="site-shell mobile-nav" aria-label="Mobile navigation">
-      {
-        navLinks.map((item) => (
-          <a
-            href={item.href}
-            class={item.key === activeNavKey ? "is-active" : undefined}
-            aria-current={item.key === activeNavKey ? "page" : undefined}
-            target={isExternalLink(item.href) ? "_blank" : undefined}
-            rel={isExternalLink(item.href) ? "noopener" : undefined}
-          >
-            <span class="nav-link-icon">
-              <Icon name={item.icon} size={16} />
-            </span>
-            <span class="nav-link-label">{item.label}</span>
-          </a>
-        ))
-      }
-    </nav>
 
     <footer class="site-shell site-footer">
       <nav class="footer-links" aria-label={lang === "ru" ? "Ссылки в подвале" : "Footer links"}>
@@ -229,6 +254,66 @@ const footerLinks = [
 
     <script is:inline>
       (() => {
+        const menu = document.querySelector("[data-mobile-menu]");
+        const toggle = document.querySelector("[data-mobile-menu-toggle]");
+
+        if (menu instanceof HTMLElement && toggle instanceof HTMLButtonElement) {
+          const closeControls = menu.querySelectorAll("[data-mobile-menu-close]");
+          const menuLinks = menu.querySelectorAll("a");
+
+          const closeMenu = () => {
+            if (menu.hidden) {
+              return;
+            }
+
+            menu.hidden = true;
+            toggle.setAttribute("aria-expanded", "false");
+            document.body.classList.remove("menu-open");
+            toggle.focus();
+          };
+
+          const openMenu = () => {
+            menu.hidden = false;
+            toggle.setAttribute("aria-expanded", "true");
+            document.body.classList.add("menu-open");
+
+            const firstLink = menu.querySelector("a");
+            if (firstLink instanceof HTMLElement) {
+              firstLink.focus();
+            }
+          };
+
+          toggle.addEventListener("click", () => {
+            if (menu.hidden) {
+              openMenu();
+              return;
+            }
+
+            closeMenu();
+          });
+
+          closeControls.forEach((control) => {
+            control.addEventListener("click", closeMenu);
+          });
+
+          menuLinks.forEach((link) => {
+            link.addEventListener("click", closeMenu);
+          });
+
+          document.addEventListener("keydown", (event) => {
+            if (event.key === "Escape") {
+              closeMenu();
+            }
+          });
+
+          const mobileQuery = window.matchMedia("(max-width: 680px)");
+          mobileQuery.addEventListener("change", (event) => {
+            if (!event.matches) {
+              closeMenu();
+            }
+          });
+        }
+
         const lightbox = document.querySelector("[data-image-lightbox]");
         if (!(lightbox instanceof HTMLElement)) {
           return;
