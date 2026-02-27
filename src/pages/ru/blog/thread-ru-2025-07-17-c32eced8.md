@@ -9,6 +9,7 @@ previewImages:
   - "/images/thread-ru-2025-07-17-c32eced8/001.jpg"
 singleMessageHtml: |
   Отныне буду именовать род человеческий: homo exterminatus
+telegramPostUrl: "https://t.me/tsatsin_blog/185"
 ---
 
 <figure>

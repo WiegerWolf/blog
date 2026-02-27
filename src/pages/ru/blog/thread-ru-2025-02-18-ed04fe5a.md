@@ -7,6 +7,7 @@ lang: ru
 messageCount: 3
 previewImages:
   - "/images/thread-ru-2025-02-18-ed04fe5a/001.jpg"
+telegramPostUrl: "https://t.me/tsatsin_blog/125"
 ---
 
 <figure>

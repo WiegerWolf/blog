@@ -9,6 +9,7 @@ previewImages:
   - "/images/thread-ru-2024-08-21-ef7c97cf/001.jpg"
 singleMessageHtml: |
   однако до чего техника дошла.  теперь LLM будут прям бинарные файлы видео и картинок выдавать. так скоро ктото догадается, бинари программ генерировать LLM <a href="https://huggingface.co/papers/2408.08459" target="_blank" rel="noopener noreferrer">https://huggingface.co/papers/2408.08459</a>
+telegramPostUrl: "https://t.me/tsatsin_blog/101"
 ---
 
 <figure>

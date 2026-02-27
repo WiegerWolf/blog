@@ -9,6 +9,7 @@ youtubeVideoIds:
   - "880TBXMuzmk"
 singleMessageHtml: |
   <a href="https://youtu.be/880TBXMuzmk?t=23" target="_blank" rel="noopener noreferrer">https://youtu.be/880TBXMuzmk?t=23</a> когда у тебя столько бабла что ты можешь купить диктора который скажет что ты лидер в области ИИ
+telegramPostUrl: "https://t.me/tsatsin_blog/31"
 ---
 
 <a href="https://youtu.be/880TBXMuzmk?t=23" target="_blank" rel="noopener noreferrer">https://youtu.be/880TBXMuzmk?t=23</a> когда у тебя столько бабла что ты можешь купить диктора который скажет что ты лидер в области ИИ

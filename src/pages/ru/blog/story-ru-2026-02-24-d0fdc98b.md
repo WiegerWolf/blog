@@ -10,6 +10,7 @@ previewImages:
   - "/images/story-ru-2026-02-24-d0fdc98b/002.jpg"
   - "/images/story-ru-2026-02-24-d0fdc98b/003.jpg"
   - "/images/story-ru-2026-02-24-d0fdc98b/004.jpg"
+telegramPostUrl: "https://t.me/tsatsin_blog/262"
 ---
 
 хочу поделиться как изменилось мое отношение к компьютерам с приобретением нового опыта пользования Claude Code за последний месяц.

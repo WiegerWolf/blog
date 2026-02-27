@@ -15,6 +15,7 @@ singleMessageHtml: |
   на мой вопрос, ИИ ответил ссылкой на статью Conan Wiki, где черным по белому написано: Life is harsh in the Exiled Lands, but more so for camels than any other creature as every idiot barbarian who passes by tries to punch them in the face.
   
   но самое смешное, что ИИ считает что эта фраза принадлежит активистам прав по защите животных! такие вот надежные источники)
+telegramPostUrl: "https://t.me/tsatsin_blog/68"
 ---
 
 <figure>

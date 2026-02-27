@@ -9,6 +9,7 @@ previewImages:
   - "/images/thread-ru-2025-10-28-ed02ae6d/001.jpg"
 youtubeVideoIds:
   - "LTYMWadOW7c"
+telegramPostUrl: "https://t.me/tsatsin_blog/239"
 ---
 
 добро пожаловать в настоящее <a href="https://youtu.be/LTYMWadOW7c?t=213" target="_blank" rel="noopener noreferrer">https://youtu.be/LTYMWadOW7c?t=213</a>

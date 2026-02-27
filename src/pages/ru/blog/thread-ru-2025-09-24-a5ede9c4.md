@@ -9,6 +9,7 @@ previewVideos:
   - "/videos/thread-ru-2025-09-24-a5ede9c4/001.mp4"
 singleMessageHtml: |
   Вышло продолжение ролика про свиней (<a href="https://www.youtube.com/watch?v=O7FIiYsVy3U" target="_blank" rel="noopener noreferrer">https://www.youtube.com/watch?v=O7FIiYsVy3U</a>)
+telegramPostUrl: "https://t.me/tsatsin_blog/225"
 ---
 
 <figure>

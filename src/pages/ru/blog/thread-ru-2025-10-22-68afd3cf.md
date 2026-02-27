@@ -8,6 +8,7 @@ messageCount: 2
 previewImages:
   - "/images/thread-ru-2025-10-22-68afd3cf/001.jpg"
   - "/images/thread-ru-2025-10-22-68afd3cf/002.jpg"
+telegramPostUrl: "https://t.me/tsatsin_blog/236"
 ---
 
 <figure>

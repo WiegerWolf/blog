@@ -11,6 +11,7 @@ previewImages:
   - "/images/thread-ru-2025-02-04-f1fba6fc/003.jpg"
 previewVideos:
   - "/videos/thread-ru-2025-02-04-f1fba6fc/001.mp4"
+telegramPostUrl: "https://t.me/tsatsin_blog/124"
 ---
 
 короче, я сделал чтото странное.

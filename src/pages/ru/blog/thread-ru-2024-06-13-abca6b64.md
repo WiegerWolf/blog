@@ -9,6 +9,7 @@ previewImages:
   - "/images/thread-ru-2024-06-13-abca6b64/001.jpg"
   - "/images/thread-ru-2024-06-13-abca6b64/002.jpg"
   - "/images/thread-ru-2024-06-13-abca6b64/003.jpg"
+telegramPostUrl: "https://t.me/tsatsin_blog/90"
 ---
 
 <figure>

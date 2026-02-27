@@ -9,6 +9,7 @@ previewImages:
   - "/images/thread-ru-2025-12-16-ecbd0d2b/001.jpg"
 singleMessageHtml: |
   когда на твой билд робот наложил гейский тэг
+telegramPostUrl: "https://t.me/tsatsin_blog/255"
 ---
 
 <figure>

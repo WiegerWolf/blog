@@ -9,6 +9,7 @@ previewImages:
   - "/images/thread-en-2023-12-03-fbef455e/001.jpg"
 singleMessageHtml: |
   Next level trolling
+telegramPostUrl: "https://t.me/tsatsin_blog/65"
 ---
 
 <figure>

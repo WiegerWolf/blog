@@ -9,6 +9,7 @@ previewImages:
   - "/images/thread-ru-2023-06-13-7c5ee5cb/001.jpg"
 singleMessageHtml: |
   чудеса web агента <a href="https://chat.openai.com/share/444821b1-c8d8-463b-a956-d19a1f5148af" target="_blank" rel="noopener noreferrer">https://chat.openai.com/share/444821b1-c8d8-463b-a956-d19a1f5148af</a>
+telegramPostUrl: "https://t.me/tsatsin_blog/42"
 ---
 
 <figure>

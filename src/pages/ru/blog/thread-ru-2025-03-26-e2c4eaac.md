@@ -9,6 +9,7 @@ previewImages:
   - "/images/thread-ru-2025-03-26-e2c4eaac/001.jpg"
 singleMessageHtml: |
   ты смотри, как здорово! подписал контракт и все долги простили тебе. прям как во временя феодализма.
+telegramPostUrl: "https://t.me/tsatsin_blog/129"
 ---
 
 <figure>

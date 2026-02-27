@@ -11,6 +11,7 @@ singleMessageHtml: |
   <a href="https://www.anthropic.com/news/3-5-models-and-computer-use" target="_blank" rel="noopener noreferrer">https://www.anthropic.com/news/3-5-models-and-computer-use</a>
   
   Ну вот. 50% то есть половину реальных(!) задач уже может LLM решить в репозитории который она впервые в жизни видит. Осталось год два и никто не будет программировать руками, только ПМ будет тикеты писать))
+telegramPostUrl: "https://t.me/tsatsin_blog/109"
 ---
 
 <figure>

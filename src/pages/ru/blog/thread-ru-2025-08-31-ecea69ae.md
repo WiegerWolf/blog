@@ -9,6 +9,7 @@ previewImages:
   - "/images/thread-ru-2025-08-31-ecea69ae/001.jpg"
 singleMessageHtml: |
   хоть чтото у нас в безопасности)
+telegramPostUrl: "https://t.me/tsatsin_blog/213"
 ---
 
 <figure>

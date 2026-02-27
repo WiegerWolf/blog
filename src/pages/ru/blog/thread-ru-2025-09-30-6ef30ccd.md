@@ -9,6 +9,7 @@ previewImages:
   - "/images/thread-ru-2025-09-30-6ef30ccd/001.jpg"
 singleMessageHtml: |
   наконец подкаст в котором задают серьезные вопросы
+telegramPostUrl: "https://t.me/tsatsin_blog/227"
 ---
 
 <figure>

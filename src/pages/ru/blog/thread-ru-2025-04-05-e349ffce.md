@@ -11,6 +11,7 @@ singleMessageHtml: |
   Смотрите какая интересная статистика появилась на <a href="https://aider.chat/HISTORY.html#release-notes" target="_blank" rel="noopener noreferrer">https://aider.chat/HISTORY.html#release-notes</a>
   
   Такими темпами, действительно как босс Anthropic сказал: "к концу 2025 года весь новый код будет написан LLM"
+telegramPostUrl: "https://t.me/tsatsin_blog/131"
 ---
 
 <figure>

@@ -9,6 +9,7 @@ previewImages:
   - "/images/thread-ru-2025-04-10-8ac2eebd/001.jpg"
 previewVideos:
   - "/videos/thread-ru-2025-04-10-8ac2eebd/001.mp4"
+telegramPostUrl: "https://t.me/tsatsin_blog/133"
 ---
 
 <figure>

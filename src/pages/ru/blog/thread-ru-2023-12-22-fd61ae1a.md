@@ -9,6 +9,7 @@ previewImages:
   - "/images/thread-ru-2023-12-22-fd61ae1a/001.jpg"
 singleMessageHtml: |
   я почему то прочитал Full-Crack stack bot. думаю уже технологии дошли то того что можно крэк бота построить...
+telegramPostUrl: "https://t.me/tsatsin_blog/66"
 ---
 
 <figure>
