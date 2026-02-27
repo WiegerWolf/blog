@@ -63,6 +63,13 @@ function formatDate(iso: string, lang: "en" | "ru") {
                 <a class="thread-quick-link" href={post.url}>{formatDate(post.pubDateIso, post.lang)}</a>
                 <span class="lang-badge" data-lang={post.lang}>{post.lang === "ru" ? "RU" : "EN"}</span>
               </p>
+              {post.tags.length > 0 && (
+                <div class="thread-tags" aria-label="Tags">
+                  {post.tags.map((tag: string) => (
+                    <span class="tag-chip">#{tag}</span>
+                  ))}
+                </div>
+              )}
               {post.previewImages.length > 0 && (
                 <div class="thread-preview" data-count={post.previewImages.length}>
                   {post.previewImages.map((image) => (
@@ -99,6 +106,13 @@ function formatDate(iso: string, lang: "en" | "ru") {
                 )}
               </p>
               <h3 class="thread-main">{post.title}</h3>
+              {post.tags.length > 0 && (
+                <div class="thread-tags" aria-label="Tags">
+                  {post.tags.map((tag: string) => (
+                    <span class="tag-chip">#{tag}</span>
+                  ))}
+                </div>
+              )}
               {post.previewImages.length > 0 && (
                 <div class="thread-preview" data-count={post.previewImages.length}>
                   {post.previewImages.map((image) => (
@@ -237,6 +251,28 @@ function formatDate(iso: string, lang: "en" | "ru") {
         return fragment;
       };
 
+      const renderTags = (item) => {
+        if (!Array.isArray(item.tags) || item.tags.length === 0) {
+          return null;
+        }
+
+        const wrap = document.createElement("div");
+        wrap.className = "thread-tags";
+        wrap.setAttribute("aria-label", "Tags");
+
+        for (const tag of item.tags.slice(0, 4)) {
+          if (typeof tag !== "string" || !tag.trim()) {
+            continue;
+          }
+          const chip = document.createElement("span");
+          chip.className = "tag-chip";
+          chip.textContent = `#${tag}`;
+          wrap.appendChild(chip);
+        }
+
+        return wrap.childElementCount > 0 ? wrap : null;
+      };
+
       const renderThread = (item) => {
         if (item.isQuickThread) {
           const article = document.createElement("article");
@@ -259,6 +295,10 @@ function formatDate(iso: string, lang: "en" | "ru") {
           }
 
           article.appendChild(meta);
+          const tags = renderTags(item);
+          if (tags) {
+            article.appendChild(tags);
+          }
           article.appendChild(renderMedia(item, { allowVideoWithImages: true }));
 
           if (item.singleMessageHtml) {
@@ -303,6 +343,11 @@ function formatDate(iso: string, lang: "en" | "ru") {
         title.className = "thread-main";
         title.textContent = item.title || "Thread";
         link.appendChild(title);
+
+        const tags = renderTags(item);
+        if (tags) {
+          link.appendChild(tags);
+        }
 
         link.appendChild(renderMedia(item));
 

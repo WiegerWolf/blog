@@ -1118,6 +1118,31 @@ h2 {
   color: var(--muted);
 }
 
+.thread-tags {
+  margin-top: 0.52rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  border: 1px solid color-mix(in oklab, var(--accent) 36%, var(--line));
+  background: color-mix(in oklab, var(--accent) 12%, var(--surface));
+  color: color-mix(in oklab, var(--accent) 88%, var(--text));
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  line-height: 1;
+  padding: 0.22rem 0.52rem;
+}
+
+.post-tags {
+  margin-top: 0.66rem;
+}
+
 .post-card {
   display: block;
   background: var(--surface-strong);

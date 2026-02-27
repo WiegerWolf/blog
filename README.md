@@ -23,6 +23,10 @@ description: "Auto-generated from first sentence."
 pubDate: 2026-02-24
 lang: en
 messageCount: 37
+# tags are optional; build auto-generates tags when omitted
+# tags:
+#   - ai
+#   - llm
 ---
 
 Your content here.
@@ -38,6 +42,10 @@ description: "Автогенерация из первого предложен�
 pubDate: 2026-02-24
 lang: ru
 messageCount: 37
+# tags are optional; build auto-generates tags when omitted
+# tags:
+#   - ai
+#   - llm
 ---
 
 Ваш текст.
@@ -84,6 +92,8 @@ Calendar routes:
 - Russian only: `/ru/calendar/`
 
 Build generates a full-text Pagefind index into `dist/pagefind/`.
+
+Tagging is automatic during build: posts get deterministic tags from title/description/content hints (plus media/link signals). If needed, you can still set `tags` manually in frontmatter using the fixed tag vocabulary.
 
 ## Telegram publisher bot (Telegram → PR)
 

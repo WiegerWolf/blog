@@ -1,4 +1,5 @@
 import { getFeedTitle } from "./postPreview";
+import { buildThreadTags } from "./postTags";
 
 export type ThreadLang = "en" | "ru";
 
@@ -12,6 +13,7 @@ export interface ThreadFrontmatter {
   previewVideos?: string[];
   youtubeVideoIds?: string[];
   singleMessageHtml?: string;
+  tags?: string[];
 }
 
 export interface ThreadModule {
@@ -30,6 +32,7 @@ export interface ThreadFeedItem {
   previewVideos: string[];
   youtubeVideoIds: string[];
   singleMessageHtml: string;
+  tags: string[];
   isQuickThread: boolean;
 }
 
@@ -40,6 +43,19 @@ export function toThreadFeedItem(module: ThreadModule, defaultLang: ThreadLang):
   const previewImages = (module.frontmatter.previewImages ?? []).slice(0, 4);
   const previewVideos = (module.frontmatter.previewVideos ?? []).slice(0, 2);
   const youtubeVideoIds = (module.frontmatter.youtubeVideoIds ?? []).slice(0, 2);
+  const tags = buildThreadTags({
+    defaultLang,
+    url: module.url,
+    title: module.frontmatter.title,
+    description: module.frontmatter.description,
+    lang: module.frontmatter.lang,
+    messageCount,
+    previewImages,
+    previewVideos,
+    youtubeVideoIds,
+    singleMessageHtml: module.frontmatter.singleMessageHtml,
+    tags: module.frontmatter.tags
+  });
 
   return {
     title: getFeedTitle(module.frontmatter.title, module.frontmatter.description),
@@ -52,6 +68,7 @@ export function toThreadFeedItem(module: ThreadModule, defaultLang: ThreadLang):
     previewVideos,
     youtubeVideoIds,
     singleMessageHtml: (module.frontmatter.singleMessageHtml ?? "").trim(),
+    tags,
     isQuickThread: messageCount === 1 && (previewImages.length === 1 || previewVideos.length === 1 || youtubeVideoIds.length > 0)
   };
 }

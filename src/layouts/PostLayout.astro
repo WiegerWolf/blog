@@ -2,12 +2,19 @@
 import BaseLayout from "./BaseLayout.astro";
 import type { ThreadModule } from "../lib/threadFeed";
 import { rankSimilarPosts } from "../lib/similarPosts";
+import { buildThreadTags } from "../lib/postTags";
 
 interface Frontmatter {
   title: string;
   description: string;
   pubDate: string | Date;
   lang?: "en" | "ru";
+  messageCount?: number;
+  previewImages?: string[];
+  previewVideos?: string[];
+  youtubeVideoIds?: string[];
+  singleMessageHtml?: string;
+  tags?: string[];
   translationKey?: string;
   showHeader?: boolean;
   showDate?: boolean;
@@ -19,6 +26,12 @@ interface Props {
   description?: string;
   pubDate?: string | Date;
   lang?: "en" | "ru";
+  messageCount?: number;
+  previewImages?: string[];
+  previewVideos?: string[];
+  youtubeVideoIds?: string[];
+  singleMessageHtml?: string;
+  tags?: string[];
   translationKey?: string;
   showHeader?: boolean;
   showDate?: boolean;
@@ -43,6 +56,20 @@ const dateOptions: Intl.DateTimeFormatOptions = {
 
 const publishedIso = safePublished.toISOString();
 const publishedLabel = safePublished.toLocaleDateString(locale, dateOptions);
+const searchPath = lang === "ru" ? "/ru/search/" : "/en/search/";
+const tags = buildThreadTags({
+  defaultLang: lang,
+  url: Astro.url.pathname,
+  title,
+  description,
+  lang,
+  messageCount: data.messageCount,
+  previewImages: data.previewImages,
+  previewVideos: data.previewVideos,
+  youtubeVideoIds: data.youtubeVideoIds,
+  singleMessageHtml: data.singleMessageHtml,
+  tags: data.tags
+});
 
 const enModules = Object.values(import.meta.glob("../pages/en/blog/*.md", { eager: true })) as ThreadModule[];
 const ruModules = Object.values(import.meta.glob("../pages/ru/blog/*.md", { eager: true })) as ThreadModule[];
@@ -85,6 +112,15 @@ const relatedAriaLabel = lang === "ru" ? "Что почитать еще" : "Mor
         <p class="post-date">
           <time datetime={publishedIso}>{publishedLabel}</time>
         </p>
+      )
+    }
+    {
+      tags.length > 0 && (
+        <div class="thread-tags post-tags" aria-label={lang === "ru" ? "Теги" : "Tags"}>
+          {tags.map((tag) => (
+            <a class="tag-chip" href={`${searchPath}?q=${encodeURIComponent(tag)}`}>#{tag}</a>
+          ))}
+        </div>
       )
     }
     {
