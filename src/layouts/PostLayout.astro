@@ -18,6 +18,7 @@ interface Frontmatter {
   translationKey?: string;
   showHeader?: boolean;
   showDate?: boolean;
+  telegramPostUrl?: string;
 }
 
 interface Props {
@@ -35,6 +36,7 @@ interface Props {
   translationKey?: string;
   showHeader?: boolean;
   showDate?: boolean;
+  telegramPostUrl?: string;
 }
 
 const props = Astro.props as Props;
@@ -57,6 +59,7 @@ const dateOptions: Intl.DateTimeFormatOptions = {
 const publishedIso = safePublished.toISOString();
 const publishedLabel = safePublished.toLocaleDateString(locale, dateOptions);
 const tagBasePath = lang === "ru" ? "/ru/tags" : "/en/tags";
+const telegramPostUrl = typeof data.telegramPostUrl === "string" ? data.telegramPostUrl.trim() : "";
 const tags = buildThreadTags({
   defaultLang: lang,
   url: Astro.url.pathname,
@@ -103,6 +106,36 @@ const relatedPosts = rankSimilarPosts(
 });
 
 const relatedAriaLabel = lang === "ru" ? "Что почитать еще" : "More to read";
+
+const telegramDiscussionTarget = (() => {
+  if (!telegramPostUrl) {
+    return "";
+  }
+
+  try {
+    const parsed = new URL(telegramPostUrl);
+    if (parsed.hostname !== "t.me" && parsed.hostname !== "www.t.me") {
+      return "";
+    }
+
+    const parts = parsed.pathname.split("/").filter(Boolean);
+    if (parts.length < 2) {
+      return "";
+    }
+
+    const [channel, postIdRaw] = parts;
+    const postId = Number(postIdRaw);
+    if (!/^[a-zA-Z0-9_]{5,}$/.test(channel) || !Number.isInteger(postId) || postId <= 0) {
+      return "";
+    }
+
+    return `${channel}/${postId}`;
+  } catch {
+    return "";
+  }
+})();
+
+const commentsHeading = lang === "ru" ? "Комментарии" : "Comments";
 ---
 
 <BaseLayout title={`${title} | Tsatsin Blog`} description={description} lang={lang}>
@@ -132,6 +165,22 @@ const relatedAriaLabel = lang === "ru" ? "Что почитать еще" : "Mor
             <a class="tag-chip" href={`${tagBasePath}/${encodeURIComponent(tag)}/`}>#{tag}</a>
           ))}
         </p>
+      )
+    }
+    {
+      telegramDiscussionTarget && (
+        <section class="post-comments" aria-label={commentsHeading}>
+          <h2>{commentsHeading}</h2>
+          <div class="post-comments-widget">
+            <script
+              is:inline
+              async
+              src="https://telegram.org/js/telegram-widget.js?22"
+              data-telegram-discussion={telegramDiscussionTarget}
+              data-comments-limit="20"
+            ></script>
+          </div>
+        </section>
       )
     }
   </article>

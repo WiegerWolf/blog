@@ -23,6 +23,7 @@ description: "Auto-generated from first sentence."
 pubDate: 2026-02-24
 lang: en
 messageCount: 37
+telegramPostUrl: "https://t.me/your_channel/123" # optional, enables comments widget
 # tags are optional; build auto-generates tags when omitted
 # tags:
 #   - ai
@@ -42,6 +43,7 @@ description: "Автогенерация из первого предложен�
 pubDate: 2026-02-24
 lang: ru
 messageCount: 37
+telegramPostUrl: "https://t.me/your_channel/123" # optional, enables comments widget
 # tags are optional; build auto-generates tags when omitted
 # tags:
 #   - ai

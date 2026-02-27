@@ -1538,6 +1538,25 @@ a.tag-chip:hover {
   margin-top: 1.2rem;
 }
 
+.post-comments {
+  margin-top: 1.6rem;
+  border-top: 1px solid var(--line);
+  padding-top: 1.2rem;
+}
+
+.post-comments h2 {
+  margin: 0 0 0.75rem;
+  font-size: clamp(1.1rem, 2.2vw, 1.3rem);
+}
+
+.post-comments-widget {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: color-mix(in oklab, var(--surface) 92%, transparent);
+  padding: 0.6rem;
+  overflow: hidden;
+}
+
 .post-related-grid {
   margin-top: clamp(2rem, 5vw, 2.8rem);
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
