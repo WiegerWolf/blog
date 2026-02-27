@@ -135,7 +135,6 @@ const telegramDiscussionTarget = (() => {
   }
 })();
 
-const commentsHeading = lang === "ru" ? "Комментарии" : "Comments";
 ---
 
 <BaseLayout title={`${title} | Tsatsin Blog`} description={description} lang={lang}>
@@ -169,8 +168,7 @@ const commentsHeading = lang === "ru" ? "Комментарии" : "Comments";
     }
     {
       telegramDiscussionTarget && (
-        <section class="post-comments" aria-label={commentsHeading}>
-          <h2>{commentsHeading}</h2>
+        <section class="post-comments" aria-label={lang === "ru" ? "Комментарии" : "Comments"}>
           <div class="post-comments-widget">
             <script
               is:inline

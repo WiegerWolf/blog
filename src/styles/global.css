@@ -1544,17 +1544,17 @@ a.tag-chip:hover {
   padding-top: 1.2rem;
 }
 
-.post-comments h2 {
-  margin: 0 0 0.75rem;
-  font-size: clamp(1.1rem, 2.2vw, 1.3rem);
+.post-comments-widget {
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
 }
 
-.post-comments-widget {
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: color-mix(in oklab, var(--surface) 92%, transparent);
-  padding: 0.6rem;
-  overflow: hidden;
+.post-comments-widget iframe {
+  display: block;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
 }
 
 .post-related-grid {
@@ -1809,6 +1809,15 @@ a.tag-chip:hover {
 
   .post-related-grid {
     grid-template-columns: 1fr;
+  }
+
+  .post-comments {
+    margin-top: 1.3rem;
+    padding-top: 1rem;
+  }
+
+  .post-comments-widget {
+    margin-inline: -0.1rem;
   }
 
   .thread-preview img {
