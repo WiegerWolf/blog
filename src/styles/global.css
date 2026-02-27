@@ -1349,6 +1349,96 @@ a.tag-chip:hover {
   gap: 1rem;
 }
 
+.about-hero {
+  margin-bottom: 1rem;
+}
+
+.about-lede {
+  margin: 0.65rem 0 0;
+  max-width: 66ch;
+}
+
+.about-pills {
+  margin-top: 0.9rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.42rem;
+}
+
+.about-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.24rem 0.56rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in oklab, var(--line) 90%, transparent);
+  background: color-mix(in oklab, var(--surface) 92%, transparent);
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.about-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.about-flow {
+  margin: 0.85rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.62rem;
+}
+
+.about-flow li {
+  border: 1px solid color-mix(in oklab, var(--line) 90%, transparent);
+  border-radius: 12px;
+  background: color-mix(in oklab, var(--surface) 90%, transparent);
+  padding: 0.56rem 0.72rem;
+  color: var(--muted);
+}
+
+.about-flow strong {
+  color: var(--text);
+}
+
+.about-link-grid {
+  margin-top: 1rem;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.about-link-card {
+  display: block;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface-strong);
+  box-shadow: var(--shadow);
+  padding: 0.95rem 1rem;
+  transition:
+    transform 170ms ease,
+    border-color 170ms ease;
+}
+
+.about-link-card:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in oklab, var(--accent) 30%, var(--line));
+}
+
+.about-link-card h3 {
+  margin: 0;
+  font-size: 1.02rem;
+}
+
+.about-link-card p {
+  margin: 0.44rem 0 0;
+  color: var(--muted);
+}
+
 .about-panel ul {
   margin: 0.9rem 0 0;
   padding-left: 1.15rem;
@@ -1572,6 +1662,14 @@ a.tag-chip:hover {
   }
 
   .about-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .about-columns {
+    grid-template-columns: 1fr;
+  }
+
+  .about-link-grid {
     grid-template-columns: 1fr;
   }
 

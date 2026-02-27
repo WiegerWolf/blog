@@ -5,34 +5,57 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
 <BaseLayout
   lang="en"
   title="About | Tsatsin"
-  description="Thread archive from Telegram."
+  description="What this site is, what content lives here, and how posts are published."
 >
-  <section class="hero">
-    <p class="eyebrow">About</p>
-    <h1>Telegram to web</h1>
-    <p>
-      I write in Telegram Saved Messages, forward here.
-      Threads about AI experiments, hardware, and whatever's broken now.
+  <section class="hero about-hero">
+    <p class="eyebrow">About this site</p>
+    <h1>A field log from Telegram, published as a searchable archive.</h1>
+    <p class="about-lede">
+      This is where raw notes become public threads: model behavior, product edge-cases,
+      hardware detours, and occasional internet absurdity.
     </p>
+    <div class="about-pills" aria-label="Site traits">
+      <span class="about-pill">Telegram-native</span>
+      <span class="about-pill">Bilingual (EN/RU)</span>
+      <span class="about-pill">Media-heavy</span>
+      <span class="about-pill">Build-time tagging</span>
+    </div>
   </section>
 
-  <section class="about-grid" aria-label="What this is">
+  <section class="about-columns" aria-label="What this archive contains">
     <article class="about-panel">
-      <h2>Format</h2>
+      <h2>What you will find</h2>
       <ul>
-        <li>30-40 messages per thread.</li>
-        <li>Screenshots as evidence.</li>
-        <li>No editing, straight to prod.</li>
+        <li>Short one-message posts with image/video context.</li>
+        <li>Longer multi-message threads when a topic needs depth.</li>
+        <li>AI notes grounded in concrete examples, not abstract hype.</li>
+        <li>Product and tooling takes from hands-on usage.</li>
       </ul>
     </article>
 
     <article class="about-panel">
-      <h2>Topics</h2>
+      <h2>Editorial stance</h2>
       <ul>
-        <li>Testing AI models on real tasks.</li>
-        <li>Hardware and firmware hacking.</li>
-        <li>Sharing prices and pain.</li>
+        <li>Minimal polishing: keep the original tone and timing.</li>
+        <li>Date follows original Telegram message chronology.</li>
+        <li>Strong opinions are allowed to age in public.</li>
+        <li>Signal over perfection.</li>
       </ul>
     </article>
+  </section>
+
+  <section class="about-link-grid" aria-label="Navigation shortcuts">
+    <a class="about-link-card" href="/en/tags/">
+      <h3>Browse by tag</h3>
+      <p>Topic-first navigation from AI and coding to quick notes.</p>
+    </a>
+    <a class="about-link-card" href="/en/search/">
+      <h3>Search threads</h3>
+      <p>Full-text search over post bodies and metadata.</p>
+    </a>
+    <a class="about-link-card" href="/en/calendar/">
+      <h3>View by timeline</h3>
+      <p>Scan publishing bursts by year, month, and day.</p>
+    </a>
   </section>
 </BaseLayout>

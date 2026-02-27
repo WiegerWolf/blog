@@ -5,34 +5,57 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
 <BaseLayout
   lang="ru"
   title="О тредах | Tsatsin"
-  description="Архив тредов из Telegram."
+  description="Что это за сайт, какой здесь контент и как публикации попадают в архив."
 >
-  <section class="hero">
-    <p class="eyebrow">О тредах</p>
-    <h1>Из Telegram в веб</h1>
-    <p>
-      Я пишу в Telegram Saved Messages, потом форваржу сюда. 
-      Треды про AI-эксперименты, железо, и что сейчас сломано.
+  <section class="hero about-hero">
+    <p class="eyebrow">О проекте</p>
+    <h1>Полевой журнал из Telegram, собранный в удобный веб-архив.</h1>
+    <p class="about-lede">
+      Здесь сырой поток заметок превращается в публичные треды: поведение моделей,
+      странности продуктов, железные эксперименты и иногда просто хороший хаос интернета.
     </p>
+    <div class="about-pills" aria-label="Особенности сайта">
+      <span class="about-pill">Telegram-first</span>
+      <span class="about-pill">Два языка (EN/RU)</span>
+      <span class="about-pill">Много медиа</span>
+      <span class="about-pill">Автотеги на билде</span>
+    </div>
   </section>
 
-  <section class="about-grid" aria-label="Что это">
+  <section class="about-columns" aria-label="Что внутри архива">
     <article class="about-panel">
-      <h2>Формат</h2>
+      <h2>Что здесь можно найти</h2>
       <ul>
-        <li>30-40 сообщений в треде.</li>
-        <li>Куча скриншотов как доказательства.</li>
-        <li>Без редактуры, сразу в прод.</li>
+        <li>Короткие посты из одного сообщения с медиа-контекстом.</li>
+        <li>Большие треды, когда тему нужно развернуть.</li>
+        <li>Заметки про AI на реальных примерах, а не в вакууме.</li>
+        <li>Практические наблюдения про продукты и инструменты.</li>
       </ul>
     </article>
 
     <article class="about-panel">
-      <h2>О чём</h2>
+      <h2>Редакционный принцип</h2>
       <ul>
-        <li>Тестирую AI-модели на реальных задачах.</li>
-        <li>Ковыряю железо и прошивки.</li>
-        <li>Делюсь ценами и болью.</li>
+        <li>Минимум полировки: сохраняется исходный ритм и тон.</li>
+        <li>Дата публикации следует за хронологией Telegram.</li>
+        <li>Смелые мнения не прячутся и со временем проверяются.</li>
+        <li>Сигнал важнее идеальной формы.</li>
       </ul>
     </article>
+  </section>
+
+  <section class="about-link-grid" aria-label="Быстрые переходы">
+    <a class="about-link-card" href="/ru/tags/">
+      <h3>Навигация по тегам</h3>
+      <p>Тематический вход: от AI и кода до коротких заметок.</p>
+    </a>
+    <a class="about-link-card" href="/ru/search/">
+      <h3>Поиск по тредам</h3>
+      <p>Полнотекстовый поиск по содержимому и метаданным.</p>
+    </a>
+    <a class="about-link-card" href="/ru/calendar/">
+      <h3>Хронология</h3>
+      <p>Просмотр активности по годам, месяцам и дням.</p>
+    </a>
   </section>
 </BaseLayout>
