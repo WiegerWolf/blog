@@ -1,0 +1,26 @@
+---
+import type { TagBucket } from "../lib/tagBuckets";
+
+interface Props {
+  buckets: TagBucket[];
+  tagBasePath: string;
+  emptyLabel: string;
+}
+
+const { buckets, tagBasePath, emptyLabel } = Astro.props as Props;
+---
+
+{
+  buckets.length === 0 ? (
+    <p class="calendar-empty">{emptyLabel}</p>
+  ) : (
+    <div class="tag-cloud" aria-label="Tags">
+      {buckets.map((bucket) => (
+        <a class="tag-cloud-item" href={`${tagBasePath}/${encodeURIComponent(bucket.tag)}/`}>
+          <span class="tag-chip">#{bucket.tag}</span>
+          <span class="tag-cloud-count">{bucket.count}</span>
+        </a>
+      ))}
+    </div>
+  )
+}

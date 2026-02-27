@@ -1,0 +1,42 @@
+---
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import ThreadFeedList from "../../../components/ThreadFeedList.astro";
+import { sortFeedItemsDesc, toThreadFeedItem, type ThreadFeedItem, type ThreadModule } from "../../../lib/threadFeed";
+import { buildTagBuckets } from "../../../lib/tagBuckets";
+
+interface StaticPathProps {
+  tag: string;
+  posts: ThreadFeedItem[];
+  count: number;
+}
+
+export async function getStaticPaths() {
+  const modules = Object.values(import.meta.glob("../blog/*.md", { eager: true })) as ThreadModule[];
+  const items = sortFeedItemsDesc(modules.map((module) => toThreadFeedItem(module, "ru")));
+  const buckets = buildTagBuckets(items);
+
+  return buckets.map((bucket) => ({
+    params: { tag: bucket.tag },
+    props: {
+      tag: bucket.tag,
+      posts: bucket.posts,
+      count: bucket.count
+    }
+  }));
+}
+
+const { tag, posts, count } = Astro.props as StaticPathProps;
+---
+
+<BaseLayout lang="ru" title={`#${tag} | Теги | Tsatsin`} description={`Треды с тегом #${tag} на русском.`}>
+  <section class="about-panel">
+    <p class="eyebrow">Тег</p>
+    <h1>#{tag}</h1>
+    <p class="search-description">{count} {count === 1 ? "публикация" : "публикаций"} в русских тредах.</p>
+    <p class="search-description"><a href="/ru/tags/">Все теги</a></p>
+  </section>
+
+  <section style="margin-top: 1rem;">
+    <ThreadFeedList posts={posts} openLabel="Открыть тред →" emptyLabel="По этому тегу пока нет публикаций." />
+  </section>
+</BaseLayout>

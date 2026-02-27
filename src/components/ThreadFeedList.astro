@@ -1,0 +1,104 @@
+---
+import type { ThreadFeedItem } from "../lib/threadFeed";
+
+interface Props {
+  posts: ThreadFeedItem[];
+  openLabel: string;
+  showLang?: boolean;
+  emptyLabel?: string;
+}
+
+const { posts, openLabel, showLang = false, emptyLabel = "No posts yet." } = Astro.props as Props;
+
+const dateOptions: Intl.DateTimeFormatOptions = {
+  year: "numeric",
+  month: "short",
+  day: "numeric"
+};
+
+function formatDate(iso: string, lang: "en" | "ru") {
+  return new Date(iso).toLocaleDateString(lang === "ru" ? "ru-RU" : "en-US", dateOptions);
+}
+---
+
+{
+  posts.length === 0 ? (
+    <p class="calendar-empty">{emptyLabel}</p>
+  ) : (
+    <div class="thread-list">
+      {
+        posts.map((post) =>
+          post.isQuickThread ? (
+            <article class="thread-item thread-item-quick">
+              <p class="thread-meta">
+                <a class="thread-quick-link" href={post.url}>{formatDate(post.pubDateIso, post.lang)}</a>
+                {showLang && <span class="lang-badge" data-lang={post.lang}>{post.lang === "ru" ? "RU" : "EN"}</span>}
+              </p>
+              {post.previewImages.length > 0 && (
+                <div class="thread-preview" data-count={post.previewImages.length}>
+                  {post.previewImages.map((image) => (
+                    <img src={image} alt="" loading="lazy" decoding="async" />
+                  ))}
+                </div>
+              )}
+              {post.previewVideos.length > 0 && (
+                <div class="thread-video">
+                  <video controls playsinline preload="metadata" src={post.previewVideos[0]}></video>
+                </div>
+              )}
+              {post.youtubeVideoIds.length > 0 && (
+                <div class="thread-embed">
+                  <iframe
+                    src={`https://www.youtube-nocookie.com/embed/${post.youtubeVideoIds[0]}`}
+                    title="YouTube video"
+                    loading="lazy"
+                    referrerpolicy="strict-origin-when-cross-origin"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowfullscreen
+                  ></iframe>
+                </div>
+              )}
+              {post.singleMessageHtml && <div class="thread-single" set:html={post.singleMessageHtml} />}
+              {post.tags.length > 0 && (
+                <p class="thread-tags thread-tags-subtle" aria-label="Tags">
+                  {post.tags.map((tag: string) => (
+                    <span class="tag-chip">#{tag}</span>
+                  ))}
+                </p>
+              )}
+            </article>
+          ) : (
+            <a class="thread-item" href={post.url}>
+              <p class="thread-meta">
+                <span class="card-date">{formatDate(post.pubDateIso, post.lang)}</span>
+                {showLang && <span class="lang-badge" data-lang={post.lang}>{post.lang === "ru" ? "RU" : "EN"}</span>}
+                {post.messageCount > 1 && <span class="msg-count">{post.messageCount} {post.lang === "ru" ? "сообщ." : "msgs"}</span>}
+              </p>
+              <h3 class="thread-main">{post.title}</h3>
+              {post.previewImages.length > 0 && (
+                <div class="thread-preview" data-count={post.previewImages.length}>
+                  {post.previewImages.map((image) => (
+                    <img src={image} alt="" loading="lazy" decoding="async" />
+                  ))}
+                </div>
+              )}
+              {post.previewImages.length === 0 && post.previewVideos.length > 0 && (
+                <div class="thread-video">
+                  <video controls playsinline preload="metadata" src={post.previewVideos[0]}></video>
+                </div>
+              )}
+              <p class="thread-open">{openLabel}</p>
+              {post.tags.length > 0 && (
+                <p class="thread-tags thread-tags-subtle" aria-label="Tags">
+                  {post.tags.map((tag: string) => (
+                    <span class="tag-chip">#{tag}</span>
+                  ))}
+                </p>
+              )}
+            </a>
+          )
+        )
+      }
+    </div>
+  )
+}

@@ -1,0 +1,18 @@
+---
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import TagCloud from "../../../components/TagCloud.astro";
+import { sortFeedItemsDesc, toThreadFeedItem, type ThreadModule } from "../../../lib/threadFeed";
+import { buildTagBuckets } from "../../../lib/tagBuckets";
+
+const modules = Object.values(import.meta.glob("../blog/*.md", { eager: true })) as ThreadModule[];
+const posts = sortFeedItemsDesc(modules.map((module) => toThreadFeedItem(module, "ru")));
+const buckets = buildTagBuckets(posts);
+---
+
+<BaseLayout lang="ru" title="Теги | Tsatsin" description="Обзор тегов русскоязычных тредов.">
+  <section class="about-panel">
+    <h1>Теги</h1>
+    <p class="search-description">Небольшой тематический указатель по русским тредам.</p>
+    <TagCloud buckets={buckets} tagBasePath="/ru/tags" emptyLabel="Пока нет тегов." />
+  </section>
+</BaseLayout>

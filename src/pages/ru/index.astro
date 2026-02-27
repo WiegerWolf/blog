@@ -35,13 +35,6 @@ function formatRuDate(iso: string) {
               <p class="thread-meta">
                 <a class="thread-quick-link" href={post.url}>{formatRuDate(post.pubDateIso)}</a>
               </p>
-              {post.tags.length > 0 && (
-                <div class="thread-tags" aria-label="Теги">
-                  {post.tags.map((tag: string) => (
-                    <span class="tag-chip">#{tag}</span>
-                  ))}
-                </div>
-              )}
               {post.previewImages.length > 0 && (
                 <div class="thread-preview" data-count={post.previewImages.length}>
                   {post.previewImages.map((image) => (
@@ -67,6 +60,13 @@ function formatRuDate(iso: string) {
                 </div>
               )}
               {post.singleMessageHtml && <div class="thread-single" set:html={post.singleMessageHtml} />}
+              {post.tags.length > 0 && (
+                <p class="thread-tags thread-tags-subtle" aria-label="Теги">
+                  {post.tags.map((tag: string) => (
+                    <span class="tag-chip">#{tag}</span>
+                  ))}
+                </p>
+              )}
             </article>
           ) : (
             <a class="thread-item" href={post.url}>
@@ -75,13 +75,6 @@ function formatRuDate(iso: string) {
                 {post.messageCount > 1 && <span class="msg-count">{post.messageCount} сообщ.</span>}
               </p>
               <h3 class="thread-main">{post.title}</h3>
-              {post.tags.length > 0 && (
-                <div class="thread-tags" aria-label="Теги">
-                  {post.tags.map((tag: string) => (
-                    <span class="tag-chip">#{tag}</span>
-                  ))}
-                </div>
-              )}
               {post.previewImages.length > 0 && (
                 <div class="thread-preview" data-count={post.previewImages.length}>
                   {post.previewImages.map((image) => (
@@ -95,6 +88,13 @@ function formatRuDate(iso: string) {
                 </div>
               )}
               <p class="thread-open">Открыть тред →</p>
+              {post.tags.length > 0 && (
+                <p class="thread-tags thread-tags-subtle" aria-label="Теги">
+                  {post.tags.map((tag: string) => (
+                    <span class="tag-chip">#{tag}</span>
+                  ))}
+                </p>
+              )}
             </a>
           )
         )
@@ -225,8 +225,8 @@ function formatRuDate(iso: string) {
           return null;
         }
 
-        const wrap = document.createElement("div");
-        wrap.className = "thread-tags";
+        const wrap = document.createElement("p");
+        wrap.className = "thread-tags thread-tags-subtle";
         wrap.setAttribute("aria-label", "Теги");
 
         for (const tag of item.tags.slice(0, 4)) {
@@ -264,10 +264,6 @@ function formatRuDate(iso: string) {
           }
 
           article.appendChild(meta);
-          const tags = renderTags(item);
-          if (tags) {
-            article.appendChild(tags);
-          }
           article.appendChild(renderMedia(item, { allowVideoWithImages: true }));
 
           if (item.singleMessageHtml) {
@@ -275,6 +271,11 @@ function formatRuDate(iso: string) {
             text.className = "thread-single";
             text.innerHTML = item.singleMessageHtml;
             article.appendChild(text);
+          }
+
+          const tags = renderTags(item);
+          if (tags) {
+            article.appendChild(tags);
           }
 
           return article;
@@ -313,17 +314,17 @@ function formatRuDate(iso: string) {
         title.textContent = item.title || "Thread";
         link.appendChild(title);
 
-        const tags = renderTags(item);
-        if (tags) {
-          link.appendChild(tags);
-        }
-
         link.appendChild(renderMedia(item));
 
         const open = document.createElement("p");
         open.className = "thread-open";
         open.textContent = openLabel;
         link.appendChild(open);
+
+        const tags = renderTags(item);
+        if (tags) {
+          link.appendChild(tags);
+        }
 
         return link;
       };

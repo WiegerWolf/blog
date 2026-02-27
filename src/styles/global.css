@@ -1125,22 +1125,60 @@ h2 {
   gap: 0.35rem;
 }
 
+.thread-tags-subtle {
+  margin-top: 0.72rem;
+}
+
 .tag-chip {
   display: inline-flex;
   align-items: center;
   border-radius: 999px;
-  border: 1px solid color-mix(in oklab, var(--accent) 36%, var(--line));
-  background: color-mix(in oklab, var(--accent) 12%, var(--surface));
-  color: color-mix(in oklab, var(--accent) 88%, var(--text));
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.03em;
+  border: 1px solid color-mix(in oklab, var(--line) 92%, transparent);
+  background: color-mix(in oklab, var(--surface) 92%, transparent);
+  color: var(--muted);
+  font-size: 0.69rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
   line-height: 1;
-  padding: 0.22rem 0.52rem;
+  padding: 0.2rem 0.5rem;
+  text-decoration: none;
+}
+
+a.tag-chip:hover {
+  color: var(--text);
+  border-color: color-mix(in oklab, var(--accent) 25%, var(--line));
 }
 
 .post-tags {
-  margin-top: 0.66rem;
+  margin-top: 1.2rem;
+}
+
+.tag-cloud {
+  display: grid;
+  gap: 0.42rem;
+}
+
+.tag-cloud-item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: fit-content;
+  max-width: 100%;
+  padding: 0.22rem 0.26rem;
+  border-radius: 999px;
+}
+
+.tag-cloud-item:hover {
+  background: color-mix(in oklab, var(--accent) 7%, transparent);
+}
+
+.tag-cloud-count {
+  min-width: 1.6rem;
+  text-align: right;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--muted);
 }
 
 .post-card {

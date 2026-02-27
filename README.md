@@ -91,6 +91,12 @@ Calendar routes:
 - English only: `/en/calendar/`
 - Russian only: `/ru/calendar/`
 
+Tag routes:
+
+- Global tags: `/tags/`
+- English tags: `/en/tags/`
+- Russian tags: `/ru/tags/`
+
 Build generates a full-text Pagefind index into `dist/pagefind/`.
 
 Tagging is automatic during build: posts get deterministic tags from title/description/content hints (plus media/link signals). If needed, you can still set `tags` manually in frontmatter using the fixed tag vocabulary.

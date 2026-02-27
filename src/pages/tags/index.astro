@@ -1,0 +1,24 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import TagCloud from "../../components/TagCloud.astro";
+import { sortFeedItemsDesc, toThreadFeedItem, type ThreadModule } from "../../lib/threadFeed";
+import { buildTagBuckets } from "../../lib/tagBuckets";
+
+const modules = [
+  ...Object.values(import.meta.glob("../en/blog/*.md", { eager: true })),
+  ...Object.values(import.meta.glob("../ru/blog/*.md", { eager: true }))
+] as ThreadModule[];
+
+const posts = sortFeedItemsDesc(
+  modules.map((module) => toThreadFeedItem(module, module.url.startsWith("/ru/") ? "ru" : "en"))
+);
+const buckets = buildTagBuckets(posts);
+---
+
+<BaseLayout title="Tags | Tsatsin" description="Browse tags across all threads.">
+  <section class="about-panel">
+    <h1>Tags</h1>
+    <p class="search-description">Cross-language topic index for all threads.</p>
+    <TagCloud buckets={buckets} tagBasePath="/tags" emptyLabel="No tags yet." />
+  </section>
+</BaseLayout>

@@ -1,0 +1,42 @@
+---
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import ThreadFeedList from "../../../components/ThreadFeedList.astro";
+import { sortFeedItemsDesc, toThreadFeedItem, type ThreadFeedItem, type ThreadModule } from "../../../lib/threadFeed";
+import { buildTagBuckets } from "../../../lib/tagBuckets";
+
+interface StaticPathProps {
+  tag: string;
+  posts: ThreadFeedItem[];
+  count: number;
+}
+
+export async function getStaticPaths() {
+  const modules = Object.values(import.meta.glob("../blog/*.md", { eager: true })) as ThreadModule[];
+  const items = sortFeedItemsDesc(modules.map((module) => toThreadFeedItem(module, "en")));
+  const buckets = buildTagBuckets(items);
+
+  return buckets.map((bucket) => ({
+    params: { tag: bucket.tag },
+    props: {
+      tag: bucket.tag,
+      posts: bucket.posts,
+      count: bucket.count
+    }
+  }));
+}
+
+const { tag, posts, count } = Astro.props as StaticPathProps;
+---
+
+<BaseLayout lang="en" title={`#${tag} | Tags | Tsatsin`} description={`Posts tagged #${tag} in English.`}>
+  <section class="about-panel">
+    <p class="eyebrow">Tag</p>
+    <h1>#{tag}</h1>
+    <p class="search-description">{count} {count === 1 ? "post" : "posts"} in English threads.</p>
+    <p class="search-description"><a href="/en/tags/">All tags</a></p>
+  </section>
+
+  <section style="margin-top: 1rem;">
+    <ThreadFeedList posts={posts} openLabel="Open thread →" emptyLabel="No posts in this tag yet." />
+  </section>
+</BaseLayout>
