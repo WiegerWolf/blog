@@ -17,6 +17,12 @@ interface TelegramChat {
   id: number;
 }
 
+interface TelegramChatInfo {
+  id: number;
+  username?: string;
+  title?: string;
+}
+
 interface TelegramPhotoSize {
   file_id: string;
   file_size?: number;
@@ -145,6 +151,11 @@ interface PublishResult {
   messageCount: number;
 }
 
+interface ChannelAnnouncement {
+  messageId: number;
+  telegramPostUrl: string;
+}
+
 interface GitHubRepoInfo {
   full_name: string;
   permissions?: {
@@ -235,7 +246,11 @@ const config = {
   autoMergeWaitSeconds: Number(process.env.AUTO_MERGE_WAIT_SECONDS ?? "300"),
   autoMergePollSeconds: Number(process.env.AUTO_MERGE_POLL_SECONDS ?? "5"),
   autoMergeMethod: (process.env.AUTO_MERGE_METHOD ?? "squash").toLowerCase() as GitHubMergeMethod,
-  publicSiteUrl: normalizeSiteBaseUrl(process.env.PUBLIC_SITE_URL ?? "")
+  publicSiteUrl: normalizeSiteBaseUrl(process.env.PUBLIC_SITE_URL ?? ""),
+  publicChannelEnabled: parseBooleanEnv(process.env.PUBLIC_CHANNEL_ENABLED, false),
+  publicChannelChatId: (process.env.PUBLIC_CHANNEL_CHAT_ID ?? "").trim(),
+  publicChannelUsername: normalizeTelegramUsername(process.env.PUBLIC_CHANNEL_USERNAME ?? ""),
+  publicChannelDisableNotification: parseBooleanEnv(process.env.PUBLIC_CHANNEL_DISABLE_NOTIFICATION, true)
 };
 
 if (!Number.isFinite(config.ownerId)) {
@@ -266,7 +281,12 @@ if (!(["merge", "squash", "rebase"] as GitHubMergeMethod[]).includes(config.auto
   throw new Error("AUTO_MERGE_METHOD must be one of: merge, squash, rebase");
 }
 
+if (config.publicChannelEnabled && !config.publicChannelChatId) {
+  throw new Error("PUBLIC_CHANNEL_CHAT_ID is required when PUBLIC_CHANNEL_ENABLED=true");
+}
+
 const stateFilePath = path.join(config.dataDir, "publisher-state.json");
+let resolvedPublicChannelUsername = config.publicChannelUsername;
 
 async function main() {
   await mkdir(config.dataDir, { recursive: true });
@@ -300,6 +320,13 @@ async function runStartupChecks() {
 
   await syncTelegramCommands();
   console.log("Telegram commands synced");
+
+  if (config.publicChannelEnabled) {
+    resolvedPublicChannelUsername = await resolvePublicChannelUsername();
+    console.log(`Public channel posting enabled: @${resolvedPublicChannelUsername}`);
+  } else {
+    console.log("Public channel posting disabled");
+  }
 
   await assertCleanWorkingTree();
   console.log("Git check passed: working tree is clean");
@@ -609,11 +636,17 @@ async function publishDraft(
   options: { mode: "manual" | "auto"; overrideLang?: Lang; publicationDateOverride?: Date }
 ) {
   let publishResult: PublishResult | null = null;
+  let channelAnnouncement: ChannelAnnouncement | null = null;
   draft.lastPublishAttemptAt = new Date().toISOString();
 
   try {
     await assertCleanWorkingTree();
     publishResult = await buildPostFromDraft(draft, options.overrideLang, options.publicationDateOverride);
+    channelAnnouncement = await createChannelAnnouncement(publishResult);
+    if (channelAnnouncement) {
+      await upsertFrontmatterStringField(publishResult.postPath, "telegramPostUrl", channelAnnouncement.telegramPostUrl);
+    }
+
     const pullRequest = await commitAndOpenPr(publishResult);
     let autoMergeResult: AutoMergeResult | null = null;
 
@@ -644,6 +677,8 @@ async function publishDraft(
       ? "Visibility: appears after GitHub Pages deploy finishes"
       : "Visibility: appears after PR merge and Pages deploy";
 
+    await finalizeChannelAnnouncement(channelAnnouncement, publishResult, pullRequest, autoMergeResult, postUrl);
+
     await sendMessage(
       chatId,
       [
@@ -651,6 +686,7 @@ async function publishDraft(
         outcomeLine,
         visibilityLine,
         locationLine,
+        channelAnnouncement ? `Telegram post: ${channelAnnouncement.telegramPostUrl}` : "Telegram post: disabled",
         `Language: ${publishResult.lang}`,
         `Slug: ${publishResult.slug}`,
         `Title: ${publishResult.title}`,
@@ -658,6 +694,8 @@ async function publishDraft(
       ].join("\n")
     );
   } catch (error) {
+    await markChannelAnnouncementFailed(channelAnnouncement, publishResult, error);
+
     if (publishResult) {
       await cleanupGeneratedArtifacts(publishResult);
     }
@@ -668,6 +706,133 @@ async function publishDraft(
     console.error("Publish failed:", error);
     await sendMessage(chatId, `Publish failed: ${messageText}`);
   }
+}
+
+async function createChannelAnnouncement(publish: PublishResult): Promise<ChannelAnnouncement | null> {
+  if (!config.publicChannelEnabled) {
+    return null;
+  }
+
+  if (!resolvedPublicChannelUsername) {
+    throw new Error("Public channel username is not resolved. Ensure channel is public and has @username.");
+  }
+
+  const text = formatChannelPendingText(publish);
+  const posted = await sendTelegramMessage(config.publicChannelChatId, text, {
+    disableNotification: config.publicChannelDisableNotification,
+    disableWebPagePreview: true
+  });
+
+  return {
+    messageId: posted.message_id,
+    telegramPostUrl: `https://t.me/${resolvedPublicChannelUsername}/${posted.message_id}`
+  };
+}
+
+async function finalizeChannelAnnouncement(
+  announcement: ChannelAnnouncement | null,
+  publish: PublishResult,
+  pullRequest: CreatedPullRequest,
+  autoMergeResult: AutoMergeResult | null,
+  postUrl: string | null
+) {
+  if (!announcement) {
+    return;
+  }
+
+  const text = formatChannelFinalText(publish, pullRequest, autoMergeResult, postUrl);
+  try {
+    await editTelegramMessageText(config.publicChannelChatId, announcement.messageId, text, {
+      disableWebPagePreview: false
+    });
+  } catch (error) {
+    console.error("Failed to update public channel post:", error);
+  }
+}
+
+async function markChannelAnnouncementFailed(
+  announcement: ChannelAnnouncement | null,
+  publish: PublishResult | null,
+  error: unknown
+) {
+  if (!announcement || !publish) {
+    return;
+  }
+
+  const reason = error instanceof Error ? truncate(error.message, 240) : "Unknown publish error";
+  const text = [
+    publish.title,
+    "",
+    publish.description,
+    "",
+    "Status: publish failed",
+    `Reason: ${reason}`
+  ].join("\n");
+
+  try {
+    await editTelegramMessageText(config.publicChannelChatId, announcement.messageId, text, {
+      disableWebPagePreview: true
+    });
+  } catch (updateError) {
+    console.error("Failed to mark public channel post as failed:", updateError);
+  }
+}
+
+function formatChannelPendingText(publish: PublishResult): string {
+  const lines = [
+    publish.title,
+    "",
+    publish.description,
+    "",
+    "Status: publishing to blog"
+  ];
+
+  return truncate(lines.join("\n"), 3900);
+}
+
+function formatChannelFinalText(
+  publish: PublishResult,
+  pullRequest: CreatedPullRequest,
+  autoMergeResult: AutoMergeResult | null,
+  postUrl: string | null
+): string {
+  const lines = [publish.title, "", publish.description, ""];
+
+  if (autoMergeResult?.merged) {
+    lines.push("Status: published");
+    if (postUrl) {
+      lines.push(`Read: ${postUrl}`);
+    }
+    return truncate(lines.join("\n"), 3900);
+  }
+
+  lines.push("Status: awaiting merge");
+  lines.push(`PR: ${pullRequest.html_url}`);
+  if (autoMergeResult && !autoMergeResult.merged) {
+    lines.push(`Auto-merge: ${autoMergeResult.reason}`);
+  }
+
+  return truncate(lines.join("\n"), 3900);
+}
+
+async function upsertFrontmatterStringField(filePath: string, fieldName: string, value: string) {
+  const source = await readFile(filePath, "utf8");
+  const frontmatterMatch = source.match(/^---\n([\s\S]*?)\n---\n/);
+  if (!frontmatterMatch) {
+    throw new Error(`Could not find YAML frontmatter in ${filePath}`);
+  }
+
+  const frontmatter = frontmatterMatch[1];
+  const escapedFieldName = escapeRegExp(fieldName);
+  const fieldPattern = new RegExp(`^${escapedFieldName}:\\s*.*$`, "m");
+  const rendered = `${fieldName}: "${escapeYamlString(value)}"`;
+
+  const updatedFrontmatter = fieldPattern.test(frontmatter)
+    ? frontmatter.replace(fieldPattern, rendered)
+    : `${frontmatter}\n${rendered}`;
+
+  const updated = source.replace(/^---\n[\s\S]*?\n---\n/, `---\n${updatedFrontmatter}\n---\n`);
+  await writeFile(filePath, updated, "utf8");
 }
 
 function extractDraftItem(message: TelegramMessage): DraftItem | null {
@@ -1292,10 +1457,35 @@ async function fetchUpdates(offset: number, timeoutSeconds: number): Promise<Tel
 }
 
 async function sendMessage(chatId: number, text: string) {
-  await telegramRequest("sendMessage", {
+  await sendTelegramMessage(chatId, text, {
+    disableWebPagePreview: true
+  });
+}
+
+async function sendTelegramMessage(
+  chatId: number | string,
+  text: string,
+  options?: { disableWebPagePreview?: boolean; disableNotification?: boolean }
+): Promise<TelegramMessage> {
+  return telegramRequest<TelegramMessage>("sendMessage", {
     chat_id: chatId,
     text,
-    disable_web_page_preview: true
+    disable_web_page_preview: options?.disableWebPagePreview ?? true,
+    disable_notification: options?.disableNotification ?? false
+  });
+}
+
+async function editTelegramMessageText(
+  chatId: number | string,
+  messageId: number,
+  text: string,
+  options?: { disableWebPagePreview?: boolean }
+) {
+  await telegramRequest("editMessageText", {
+    chat_id: chatId,
+    message_id: messageId,
+    text,
+    disable_web_page_preview: options?.disableWebPagePreview ?? true
   });
 }
 
@@ -2132,6 +2322,47 @@ function toRepoRelativePath(absolutePath: string): string {
   return relative.split(path.sep).join(path.posix.sep);
 }
 
+async function resolvePublicChannelUsername(): Promise<string> {
+  if (!config.publicChannelEnabled) {
+    return "";
+  }
+
+  if (config.publicChannelUsername) {
+    return config.publicChannelUsername;
+  }
+
+  const chatInfo = await telegramRequest<TelegramChatInfo>("getChat", {
+    chat_id: config.publicChannelChatId
+  });
+
+  const username = normalizeTelegramUsername(chatInfo.username ?? "");
+  if (!username) {
+    const title = chatInfo.title ? ` (${chatInfo.title})` : "";
+    throw new Error(`PUBLIC_CHANNEL_CHAT_ID must resolve to a public channel with @username${title}`);
+  }
+
+  return username;
+}
+
+function normalizeTelegramUsername(input: string): string {
+  const trimmed = input.trim();
+  if (!trimmed) {
+    return "";
+  }
+
+  const noPrefix = trimmed
+    .replace(/^https?:\/\/t\.me\//i, "")
+    .replace(/^t\.me\//i, "")
+    .replace(/^@+/, "")
+    .replace(/\/.*/, "");
+
+  if (!/^[a-zA-Z0-9_]{5,}$/.test(noPrefix)) {
+    return "";
+  }
+
+  return noPrefix;
+}
+
 function normalizeSiteBaseUrl(input: string): string {
   const trimmed = input.trim();
   if (!trimmed) {
@@ -2196,6 +2427,10 @@ function parseBooleanEnv(input: string | undefined, defaultValue: boolean): bool
   }
 
   return defaultValue;
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function sleep(ms: number) {

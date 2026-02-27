@@ -127,6 +127,7 @@ Behavior:
 - Adds `previewVideos` for video thread cards.
 - Adds `youtubeVideoIds` for one-message YouTube thread cards.
 - Adds `singleMessageHtml` for one-message threads (used as inline card content).
+- Optional public-channel flow: pre-posts to Telegram channel, writes `telegramPostUrl` to frontmatter, then edits channel post after merge.
 - Preserves Telegram formatting (italic, bold, code, links, code blocks).
 - Auto-embeds YouTube links from text messages.
 - Auto-merges bot-opened PRs when mergeable and checks are green.
@@ -180,6 +181,10 @@ Optional variables:
 - `AUTO_MERGE_WAIT_SECONDS` (default: `300`)
 - `AUTO_MERGE_POLL_SECONDS` (default: `5`)
 - `AUTO_MERGE_METHOD` (default: `squash`, options: `merge`, `squash`, `rebase`)
+- `PUBLIC_CHANNEL_ENABLED` (default: `false`)
+- `PUBLIC_CHANNEL_CHAT_ID` (required when `PUBLIC_CHANNEL_ENABLED=true`, e.g. `@your_channel`)
+- `PUBLIC_CHANNEL_USERNAME` (optional override for t.me link generation)
+- `PUBLIC_CHANNEL_DISABLE_NOTIFICATION` (default: `true`)
 - `PUBLIC_SITE_URL` (optional explicit base URL used in bot publish messages)
 
 ### Run bot on home server (Docker)
