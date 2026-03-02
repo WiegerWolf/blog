@@ -76,6 +76,7 @@ interface TelegramMessage {
   date: number;
   from?: TelegramUser;
   chat: TelegramChat;
+  reply_to_message?: TelegramMessage;
   text?: string;
   entities?: TelegramMessageEntity[];
   caption?: string;
@@ -136,6 +137,20 @@ interface DraftState {
 interface PublisherState {
   lastUpdateId: number;
   drafts: Record<string, DraftState>;
+  publishedPosts: Record<string, PublishedPostRecord>;
+}
+
+interface PublishedPostRecord {
+  createdAt: string;
+  ownerChatId: number;
+  ownerMessageId: number;
+  pullRequestNumber: number;
+  pullRequestUrl: string;
+  pullRequestHeadRef?: string;
+  lang: Lang;
+  slug: string;
+  channelPostUrl?: string;
+  channelMessageId?: number;
 }
 
 interface PublishResult {
@@ -178,6 +193,7 @@ interface GitHubPullDetails {
   number: number;
   html_url: string;
   state: string;
+  merged?: boolean;
   draft: boolean;
   mergeable: boolean | null;
   mergeable_state?: string;
@@ -203,6 +219,20 @@ interface GitHubCheckRunsResponse {
     status: string;
     conclusion: string | null;
   }>;
+}
+
+interface GitHubPullFile {
+  filename: string;
+  status?: string;
+}
+
+interface ParsedPublishedSummary {
+  pullRequestNumber: number;
+  pullRequestUrl: string;
+  lang?: Lang;
+  slug?: string;
+  channelPostUrl?: string;
+  channelMessageId?: number;
 }
 
 interface AutoMergeResult {
@@ -391,6 +421,10 @@ async function handleUpdate(update: TelegramUpdate, state: PublisherState) {
     return;
   }
 
+  if (await handleDeleteReply(message, incomingText, state)) {
+    return;
+  }
+
   const chatIdKey = String(message.chat.id);
   const activeDraft = state.drafts[chatIdKey];
 
@@ -471,6 +505,7 @@ async function handleCommand(message: TelegramMessage, commandText: string, stat
         "Forward messages from Saved Messages to build a draft.",
         "Use /status to inspect current draft.",
         "Use /publish and choose a date (first/today/custom).",
+        "Reply 'delete' to a publish summary message to revert it.",
         "Use /cancel to cancel pending publish.",
         "Use /reset to clear draft."
       ].join("\n")
@@ -587,6 +622,202 @@ async function handleCommand(message: TelegramMessage, commandText: string, stat
   await sendMessage(chatId, "Unknown command. Use /start for help.");
 }
 
+async function handleDeleteReply(message: TelegramMessage, incomingText: string | undefined, state: PublisherState): Promise<boolean> {
+  if (!incomingText || incomingText.trim().toLowerCase() !== "delete") {
+    return false;
+  }
+
+  const replied = message.reply_to_message;
+  if (!replied?.message_id) {
+    await sendMessage(message.chat.id, "Reply 'delete' to a publish summary message from this bot.");
+    return true;
+  }
+
+  const key = publishedPostKey(message.chat.id, replied.message_id);
+  const stored = state.publishedPosts[key];
+  const parsed = stored ? null : parsePublishedSummaryMessage(replied.text ?? "");
+
+  const target = await resolveDeleteTarget(stored, parsed);
+  if (!target) {
+    await sendMessage(
+      message.chat.id,
+      [
+        "Could not resolve publish metadata from that reply.",
+        "Reply to the bot message that starts with 'PR created:' and includes Language/Slug lines."
+      ].join("\n")
+    );
+    return true;
+  }
+
+  try {
+    await executeDeleteTarget(message.chat.id, target, key, state);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : "unknown delete error";
+    await sendMessage(message.chat.id, `Delete failed: ${reason}`);
+  }
+
+  return true;
+}
+
+async function resolveDeleteTarget(
+  stored: PublishedPostRecord | undefined,
+  parsed: ParsedPublishedSummary | null
+): Promise<{
+  pullRequestNumber: number;
+  pullRequestUrl: string;
+  pullRequestHeadRef?: string;
+  lang: Lang;
+  slug: string;
+  channelPostUrl?: string;
+  channelMessageId?: number;
+} | null> {
+  if (stored) {
+    return {
+      pullRequestNumber: stored.pullRequestNumber,
+      pullRequestUrl: stored.pullRequestUrl,
+      pullRequestHeadRef: stored.pullRequestHeadRef,
+      lang: stored.lang,
+      slug: stored.slug,
+      channelPostUrl: stored.channelPostUrl,
+      channelMessageId: stored.channelMessageId
+    };
+  }
+
+  if (!parsed) {
+    return null;
+  }
+
+  let lang = parsed.lang;
+  let slug = parsed.slug;
+  if (!lang || !slug) {
+    const inferred = await inferPostIdentityFromPr(parsed.pullRequestNumber);
+    if (inferred) {
+      lang = inferred.lang;
+      slug = inferred.slug;
+    }
+  }
+
+  if (!lang || !slug) {
+    return null;
+  }
+
+  return {
+    pullRequestNumber: parsed.pullRequestNumber,
+    pullRequestUrl: parsed.pullRequestUrl,
+    lang,
+    slug,
+    channelPostUrl: parsed.channelPostUrl,
+    channelMessageId: parsed.channelMessageId
+  };
+}
+
+async function executeDeleteTarget(
+  chatId: number,
+  target: {
+    pullRequestNumber: number;
+    pullRequestUrl: string;
+    pullRequestHeadRef?: string;
+    lang: Lang;
+    slug: string;
+    channelPostUrl?: string;
+    channelMessageId?: number;
+  },
+  stateKey: string,
+  state: PublisherState
+) {
+  await sendMessage(chatId, `Delete requested for ${target.lang}/${target.slug}. Checking PR #${target.pullRequestNumber}...`);
+
+  const pull = await githubRequest<GitHubPullDetails>(`/repos/${config.githubRepo}/pulls/${target.pullRequestNumber}`, "GET");
+
+  if (pull.state === "open") {
+    await githubRequest<GitHubPullDetails>(`/repos/${config.githubRepo}/pulls/${target.pullRequestNumber}`, "PATCH", {
+      state: "closed"
+    });
+
+    const headRef = target.pullRequestHeadRef ?? pull.head.ref;
+    const deletedBranch = headRef.startsWith("bot/") ? await deleteRemoteBranch(headRef) : false;
+    const channelResult = await deleteChannelAnnouncement(target.channelMessageId, target.channelPostUrl);
+    delete state.publishedPosts[stateKey];
+
+    await sendMessage(
+      chatId,
+      [
+        `Delete complete: PR closed (${pull.html_url})`,
+        deletedBranch ? "Branch: deleted" : "Branch: not deleted",
+        `Telegram post: ${describeChannelDeletionResult(channelResult)}`
+      ].join("\n")
+    );
+    return;
+  }
+
+  if (pull.state === "closed" && pull.merged) {
+    await assertCleanWorkingTree();
+    const cleanupPr = await commitDeletionAndOpenPr(target.lang, target.slug, target.pullRequestNumber);
+
+    let autoMergeResult: AutoMergeResult | null = null;
+    if (config.autoMergeBotPrs) {
+      try {
+        autoMergeResult = await attemptAutoMergeForBotPr(cleanupPr);
+      } catch (error) {
+        autoMergeResult = {
+          merged: false,
+          reason: error instanceof Error ? error.message : "unknown auto-merge error"
+        };
+      }
+    }
+
+    const channelResult = await deleteChannelAnnouncement(target.channelMessageId, target.channelPostUrl);
+    delete state.publishedPosts[stateKey];
+
+    const outcomeLine = autoMergeResult
+      ? autoMergeResult.merged
+        ? `Outcome: merged to ${config.baseBranch} (${config.autoMergeMethod})`
+        : `Outcome: cleanup PR opened, not merged (${autoMergeResult.reason})`
+      : "Outcome: cleanup PR opened (auto-merge disabled)";
+
+    await sendMessage(
+      chatId,
+      [
+        `Cleanup PR created: ${cleanupPr.html_url}`,
+        outcomeLine,
+        `Post removed: /${target.lang}/blog/${target.slug}/`,
+        `Telegram post: ${describeChannelDeletionResult(channelResult)}`
+      ].join("\n")
+    );
+    return;
+  }
+
+  const channelResult = await deleteChannelAnnouncement(target.channelMessageId, target.channelPostUrl);
+  delete state.publishedPosts[stateKey];
+  await sendMessage(
+    chatId,
+    [
+      `PR already closed and unmerged: ${pull.html_url}`,
+      "Repo changes are already not published.",
+      `Telegram post: ${describeChannelDeletionResult(channelResult)}`
+    ].join("\n")
+  );
+}
+
+async function inferPostIdentityFromPr(prNumber: number): Promise<{ lang: Lang; slug: string } | null> {
+  const files = await githubRequest<GitHubPullFile[]>(`/repos/${config.githubRepo}/pulls/${prNumber}/files?per_page=100`, "GET");
+
+  for (const file of files) {
+    const match = file.filename.match(/^src\/pages\/(en|ru)\/blog\/([a-z0-9-]+)\.md$/i);
+    if (!match) {
+      continue;
+    }
+
+    const lang = match[1].toLowerCase();
+    const slug = match[2];
+    if ((lang === "en" || lang === "ru") && slug) {
+      return { lang, slug };
+    }
+  }
+
+  return null;
+}
+
 async function autoFinalizeDrafts(state: PublisherState) {
   if (config.autoFinalizeMinutes <= 0) {
     return;
@@ -679,7 +910,7 @@ async function publishDraft(
 
     await finalizeChannelAnnouncement(channelAnnouncement, publishResult, pullRequest, autoMergeResult, postUrl);
 
-    await sendMessage(
+    const publishSummaryMessage = await sendMessage(
       chatId,
       [
         `PR created: ${pullRequest.html_url}`,
@@ -693,6 +924,20 @@ async function publishDraft(
         options.mode === "auto" ? "Mode: auto-finalize" : "Mode: manual publish"
       ].join("\n")
     );
+
+    const publishSummaryRecord: PublishedPostRecord = {
+      createdAt: new Date().toISOString(),
+      ownerChatId: chatId,
+      ownerMessageId: publishSummaryMessage.message_id,
+      pullRequestNumber: pullRequest.number,
+      pullRequestUrl: pullRequest.html_url,
+      pullRequestHeadRef: pullRequest.head.ref,
+      lang: publishResult.lang,
+      slug: publishResult.slug,
+      channelPostUrl: channelAnnouncement?.telegramPostUrl,
+      channelMessageId: channelAnnouncement?.messageId
+    };
+    state.publishedPosts[publishedPostKey(chatId, publishSummaryMessage.message_id)] = publishSummaryRecord;
   } catch (error) {
     await markChannelAnnouncementFailed(channelAnnouncement, publishResult, error);
 
@@ -776,6 +1021,67 @@ async function markChannelAnnouncementFailed(
   } catch (updateError) {
     console.error("Failed to mark public channel post as failed:", updateError);
   }
+}
+
+type ChannelDeletionResult = {
+  status: "deleted" | "not-linked" | "failed";
+  reason?: string;
+};
+
+async function deleteChannelAnnouncement(
+  channelMessageId?: number,
+  channelPostUrl?: string
+): Promise<ChannelDeletionResult> {
+  let chatId: string | number | null = null;
+  let messageId: number | null = null;
+
+  if (channelMessageId && Number.isInteger(channelMessageId) && channelMessageId > 0 && config.publicChannelChatId) {
+    chatId = config.publicChannelChatId;
+    messageId = channelMessageId;
+  } else if (channelPostUrl) {
+    const parsed = parseTelegramPostUrl(channelPostUrl);
+    if (parsed) {
+      chatId = parsed.chatId;
+      messageId = parsed.messageId;
+    }
+  }
+
+  if (!chatId || !messageId) {
+    return {
+      status: "not-linked"
+    };
+  }
+
+  try {
+    const removed = await deleteTelegramMessage(chatId, messageId);
+    if (removed) {
+      return {
+        status: "deleted"
+      };
+    }
+
+    return {
+      status: "failed",
+      reason: "deleteMessage returned false"
+    };
+  } catch (error) {
+    return {
+      status: "failed",
+      reason: error instanceof Error ? truncate(error.message, 180) : "unknown error"
+    };
+  }
+}
+
+function describeChannelDeletionResult(result: ChannelDeletionResult): string {
+  if (result.status === "deleted") {
+    return "deleted";
+  }
+
+  if (result.status === "not-linked") {
+    return "not linked";
+  }
+
+  return result.reason ? `failed (${result.reason})` : "failed";
 }
 
 function formatChannelPendingText(publish: PublishResult): string {
@@ -1198,6 +1504,74 @@ async function commitAndOpenPr(publish: PublishResult): Promise<CreatedPullReque
   }
 }
 
+async function commitDeletionAndOpenPr(lang: Lang, slug: string, sourcePrNumber: number): Promise<CreatedPullRequest> {
+  const branch = `bot/delete-${lang}-${slug}-${Date.now()}`;
+  const pathsToDelete = [
+    `src/pages/${lang}/blog/${slug}.md`,
+    `public/images/${slug}`,
+    `public/videos/${slug}`,
+    `public/files/${slug}`
+  ];
+
+  await runGit(["fetch", "origin", config.baseBranch], { cwd: config.repoDir, allowFailure: false });
+  await runGit(["checkout", config.baseBranch], { cwd: config.repoDir, allowFailure: false });
+  await runGit(["pull", "--ff-only", "origin", config.baseBranch], { cwd: config.repoDir, allowFailure: false });
+  await runGit(["checkout", "-b", branch], { cwd: config.repoDir, allowFailure: false });
+
+  try {
+    await runGit(["rm", "-r", "--ignore-unmatch", "--", ...pathsToDelete], {
+      cwd: config.repoDir,
+      allowFailure: false
+    });
+
+    const status = await runGit(["status", "--porcelain"], {
+      cwd: config.repoDir,
+      allowFailure: false
+    });
+    if (!status.stdout.trim()) {
+      throw new Error(`No tracked post assets found for ${lang}/${slug}.`);
+    }
+
+    await runGit(
+      [
+        "-c",
+        "user.name=Telegram Publisher Bot",
+        "-c",
+        "user.email=telegram-publisher-bot@users.noreply.github.com",
+        "commit",
+        "-m",
+        `remove ${lang} thread ${slug}`
+      ],
+      {
+        cwd: config.repoDir,
+        allowFailure: false
+      }
+    );
+
+    const pushUrl = `https://x-access-token:${config.githubToken}@github.com/${config.githubRepo}.git`;
+    await runGit(["push", "--set-upstream", pushUrl, branch], {
+      cwd: config.repoDir,
+      allowFailure: false,
+      redactToken: config.githubToken
+    });
+
+    return githubRequest<CreatedPullRequest>(`/repos/${config.githubRepo}/pulls`, "POST", {
+      title: `Remove ${lang.toUpperCase()} thread: ${slug}`,
+      head: branch,
+      base: config.baseBranch,
+      body: [
+        "## Summary",
+        `- Removes previously published ${lang.toUpperCase()} thread ${slug}`,
+        `- Triggered by delete reply for source PR #${sourcePrNumber}`,
+        "- Deletes post markdown and imported media/assets"
+      ].join("\n")
+    });
+  } finally {
+    await runGit(["checkout", config.baseBranch], { cwd: config.repoDir, allowFailure: true });
+    await runGit(["branch", "-D", branch], { cwd: config.repoDir, allowFailure: true });
+  }
+}
+
 async function attemptAutoMergeForBotPr(pullRequest: CreatedPullRequest): Promise<AutoMergeResult> {
   if (!pullRequest.head.ref.startsWith("bot/")) {
     return {
@@ -1456,8 +1830,8 @@ async function fetchUpdates(offset: number, timeoutSeconds: number): Promise<Tel
   });
 }
 
-async function sendMessage(chatId: number, text: string) {
-  await sendTelegramMessage(chatId, text, {
+async function sendMessage(chatId: number, text: string): Promise<TelegramMessage> {
+  return sendTelegramMessage(chatId, text, {
     disableWebPagePreview: true
   });
 }
@@ -1486,6 +1860,13 @@ async function editTelegramMessageText(
     message_id: messageId,
     text,
     disable_web_page_preview: options?.disableWebPagePreview ?? true
+  });
+}
+
+async function deleteTelegramMessage(chatId: number | string, messageId: number): Promise<boolean> {
+  return telegramRequest<boolean>("deleteMessage", {
+    chat_id: chatId,
+    message_id: messageId
   });
 }
 
@@ -1640,7 +2021,11 @@ function safeParseJson(value: string): unknown {
   }
 }
 
-async function githubRequest<T>(endpoint: string, method: "POST" | "GET" | "PUT" | "DELETE", body?: unknown): Promise<T> {
+async function githubRequest<T>(
+  endpoint: string,
+  method: "POST" | "GET" | "PUT" | "PATCH" | "DELETE",
+  body?: unknown
+): Promise<T> {
   const response = await fetch(`https://api.github.com${endpoint}`, {
     method,
     headers: {
@@ -1720,22 +2105,24 @@ async function assertCleanWorkingTree() {
   });
 
   if (status.stdout.trim()) {
-    throw new Error("Repository has pending changes. Commit or stash them before /publish.");
+    throw new Error("Repository has pending changes. Commit or stash them before publish/delete operations.");
   }
 }
 
 async function loadState(): Promise<PublisherState> {
   try {
     const raw = await readFile(stateFilePath, "utf8");
-    const parsed = JSON.parse(raw) as PublisherState;
+    const parsed = JSON.parse(raw) as Partial<PublisherState>;
     return {
       lastUpdateId: Number(parsed.lastUpdateId ?? 0),
-      drafts: parsed.drafts ?? {}
+      drafts: parsed.drafts ?? {},
+      publishedPosts: parsed.publishedPosts ?? {}
     };
   } catch {
     return {
       lastUpdateId: 0,
-      drafts: {}
+      drafts: {},
+      publishedPosts: {}
     };
   }
 }
@@ -1867,6 +2254,79 @@ function parsePublishDateChoice(input: string, detectedDateIso: string): Date | 
   }
 
   return null;
+}
+
+function parsePublishedSummaryMessage(text: string): ParsedPublishedSummary | null {
+  if (!text.trim()) {
+    return null;
+  }
+
+  const prUrlMatch = text.match(/^PR created:\s*(https?:\/\/\S+)\s*$/im);
+  const pullRequestUrl = prUrlMatch?.[1]?.trim();
+  const pullRequestNumber = pullRequestUrl ? extractPullRequestNumberFromUrl(pullRequestUrl) : null;
+
+  if (!pullRequestUrl || !pullRequestNumber) {
+    return null;
+  }
+
+  const langMatch = text.match(/^Language:\s*(en|ru)\s*$/im);
+  const slugMatch = text.match(/^Slug:\s*([a-z0-9-]+)\s*$/im);
+  const telegramMatch = text.match(/^Telegram post:\s*(https?:\/\/\S+|disabled)\s*$/im);
+  const channelPostUrl = telegramMatch?.[1] && telegramMatch[1] !== "disabled" ? telegramMatch[1] : undefined;
+  const parsedChannel = channelPostUrl ? parseTelegramPostUrl(channelPostUrl) : null;
+
+  return {
+    pullRequestNumber,
+    pullRequestUrl,
+    lang: langMatch?.[1] === "en" || langMatch?.[1] === "ru" ? langMatch[1] : undefined,
+    slug: slugMatch?.[1],
+    channelPostUrl,
+    channelMessageId: parsedChannel?.messageId
+  };
+}
+
+function extractPullRequestNumberFromUrl(url: string): number | null {
+  const match = url.match(/\/pull\/(\d+)(?:$|[/?#])/);
+  if (!match) {
+    return null;
+  }
+
+  const value = Number(match[1]);
+  return Number.isInteger(value) && value > 0 ? value : null;
+}
+
+function parseTelegramPostUrl(url: string): { chatId: string; messageId: number } | null {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return null;
+  }
+
+  const host = parsed.hostname.toLowerCase();
+  if (host !== "t.me" && host !== "telegram.me") {
+    return null;
+  }
+
+  const parts = parsed.pathname.split("/").filter(Boolean);
+  if (parts.length < 2) {
+    return null;
+  }
+
+  const username = parts[0];
+  const messageId = Number(parts[1]);
+  if (!username || !Number.isInteger(messageId) || messageId <= 0) {
+    return null;
+  }
+
+  return {
+    chatId: `@${username}`,
+    messageId
+  };
+}
+
+function publishedPostKey(chatId: number, messageId: number): string {
+  return `${chatId}:${messageId}`;
 }
 
 function parseIsoDate(value: string): Date | null {

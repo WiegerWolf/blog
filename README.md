@@ -113,6 +113,7 @@ Flow:
 2. Forward the full thread to your bot (text + media + files in order).
 3. Send `/publish`, then pick publish date (`first`, `today`, or `YYYY-MM-DD`).
 4. Bot creates a branch and opens a PR to `main`.
+5. If you published by mistake, reply `delete` to that publish summary message.
 
 Behavior:
 
@@ -134,6 +135,7 @@ Behavior:
 - Auto-embeds YouTube links from text messages.
 - Auto-merges bot-opened PRs when mergeable and checks are green.
 - Sends clear publish outcome in Telegram (merged vs waiting) and the final post URL.
+- Supports revert by reply: `delete` on a publish summary closes open PRs, or opens a cleanup PR for merged posts.
 
 Supported bot commands:
 
@@ -142,6 +144,10 @@ Supported bot commands:
 - `/publish` - choose publish date and publish draft as PR
 - `/cancel` - cancel pending publish date prompt
 - `/reset` - clear draft buffer
+
+Additional action (reply-based):
+
+- reply `delete` to a bot publish summary message to remove mistaken publications
 
 The bot registers these commands in Telegram automatically, so they appear in the command menu.
 
